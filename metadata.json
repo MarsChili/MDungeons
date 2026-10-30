@@ -1,0 +1,8 @@
+{
+  "name": "声骸 ECHOLOCAUTION",
+  "description": "在一座没有光的记忆地牢里，你是个失明的「褪色者」。声音是你的眼睛，也是你的名字。3D 声呐回声地牢探索与潜行动作肉鸽游戏。",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
