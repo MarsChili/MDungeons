@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.screenshots/
+.workbuddy/
+.DS_Store
+*.log

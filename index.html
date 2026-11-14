@@ -5,210 +5,246 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>声骸 ECHOLOCAUTION</title>
 <meta name="description" content="在一座没有光的记忆地牢里，你是个失明的「褪色者」。声音是你的眼睛，也是你的名字。3D 声呐回声地牢探索与潜行动作肉鸽游戏。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23080f16'/%3E%3Ccircle cx='16' cy='16' r='10.5' fill='none' stroke='%237ce9ff' stroke-width='1.8' opacity='.85'/%3E%3Ccircle cx='16' cy='16' r='6' fill='none' stroke='%237ce9ff' stroke-width='1.6' opacity='.5'/%3E%3Ccircle cx='16' cy='16' r='1.9' fill='%23bdf6ff'/%3E%3C/svg%3E">
 <meta property="og:title" content="声骸 ECHOLOCAUTION">
 <meta property="og:description" content="在一座没有光的记忆地牢里，你是个失明的「褪色者」。声音是你的眼睛，也是你的名字。3D 声呐回声地牢探索与潜行动作肉鸽游戏。">
 <meta property="og:type" content="website">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+/* 12px 点阵像素字体（本地资源，覆盖简体中文与拉丁字符） */
+@font-face{
+  font-family:'FusionPixel';
+  src:url('assets/fonts/fusion-pixel-12px-sc.woff2') format('woff2');
+  font-weight:400;font-style:normal;font-display:swap;
+}
 :root{
-  --bg:#03060d; --surface:#09101c; --border:rgba(92,233,255,0.18);
+  --bg:#050a11; --surface:#0a1622; --border:#1d4a5c;
   --echo:#5ce9ff; --foe:#ff4d61; --amber:#ffaa3b;
   --shade:#b861ff; --gold:#ffd24d; --good:#52f69e; --ink:#dcebff;
-  --font-serif:'Cinzel',serif,"Songti SC","SimSun",serif;
-  --font-sans:'Space Grotesk',"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --font-serif:'FusionPixel','Zpix','PingFang SC',monospace;
+  --font-sans:'FusionPixel','Zpix','PingFang SC',monospace;
+  --hard:4px 4px 0 #01060b;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{width:100%;height:100%;background:#020408;overflow:hidden;
-  font-family:var(--font-sans);color:var(--ink);user-select:none;}
+  font-family:var(--font-sans);color:var(--ink);user-select:none;
+  font-size:15px;letter-spacing:.5px;
+  -webkit-font-smoothing:none;text-rendering:geometricPrecision;}
+
+/* 全屏 CRT 扫描线：让所有界面元素统一到像素屏幕质感 */
+body::after{content:"";position:fixed;inset:0;z-index:60;pointer-events:none;
+  background:repeating-linear-gradient(180deg,rgba(0,0,0,.26) 0 1px,rgba(0,0,0,0) 1px 3px);
+  opacity:.55;}
 
 /* 恢复挺进地牢式像素颗粒感与低分辨率放大渲染 */
 #c{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:crosshair;
   image-rendering:pixelated;image-rendering:crisp-edges;}
 
-/* 极简高科技声纳准星 */
-#cross{position:fixed;left:50%;top:50%;width:24px;height:24px;transform:translate(-50%,-50%);
-  pointer-events:none;z-index:5;opacity:0.85;}
-#cross::before{content:"";position:absolute;left:11px;top:2px;width:2px;height:20px;background:var(--echo);box-shadow:0 0 8px var(--echo);}
-#cross::after{content:"";position:absolute;left:2px;top:11px;width:20px;height:2px;background:var(--echo);box-shadow:0 0 8px var(--echo);}
+/* 像素十字准星：四段方块拼出的十字，不做发光羽化 */
+#cross{position:fixed;left:50%;top:50%;width:22px;height:22px;transform:translate(-50%,-50%);
+  pointer-events:none;z-index:5;opacity:.9;}
+#cross::before{content:"";position:absolute;left:9px;top:0;width:4px;height:22px;background:var(--echo);}
+#cross::after{content:"";position:absolute;left:0;top:9px;width:22px;height:4px;background:var(--echo);}
 
-/* 换层防闪烁平滑过渡幕 */
-#fadeTransition{position:fixed;inset:0;pointer-events:none;z-index:30;background:#020408;opacity:0;transition:opacity .3s cubic-bezier(0.4,0,0.2,1);}
+/* 换层防闪烁过渡幕 */
+#fadeTransition{position:fixed;inset:0;pointer-events:none;z-index:30;background:#020408;opacity:0;transition:opacity .3s steps(4,end);}
 
 /* HUD */
-#hud{position:fixed;inset:0;pointer-events:none;z-index:8;display:none;}
+#hud{position:fixed;inset:0;pointer-events:none;z-index:8;display:none;
+  font-family:'FusionPixel',monospace;font-synthesis:none;font-weight:400;}
 #hud.on{display:block;}
-#hudTop{position:absolute;top:16px;left:18px;display:flex;gap:16px;align-items:center;
-  font-size:13px;letter-spacing:1.5px;text-shadow:0 2px 10px rgba(0,0,0,.9);font-weight:600;}
-#hpWrap{display:flex;align-items:center;gap:6px;}
-#hp{color:var(--foe);font-size:20px;letter-spacing:4px;filter:drop-shadow(0 0 8px rgba(255,77,97,.6));}
-.hud-meta{color:#8ea3be;display:flex;align-items:center;gap:10px;background:rgba(8,14,24,.75);
-  padding:5px 12px;border-radius:6px;border:1px solid var(--border);backdrop-filter:blur(10px);}
-.hud-meta b{color:var(--echo);font-weight:700;}
+#hudTop{position:absolute;top:16px;left:16px;display:flex;gap:8px;align-items:center;
+  font-size:14px;letter-spacing:0;text-shadow:2px 2px 0 rgba(0,0,0,.85);}
+#hpWrap{display:flex;align-items:center;gap:7px;}
+#hpWrap>span{font-size:13px!important;letter-spacing:0!important;}
+#hp{color:var(--foe);font-size:19px;letter-spacing:2px;text-shadow:2px 2px 0 #20040a;}
+.hud-meta{color:#a9bdd2;display:flex;align-items:center;gap:7px;background:#08131f;
+  padding:5px 10px;border:2px solid #285066;box-shadow:2px 2px 0 #01050a;white-space:nowrap;}
+.hud-meta b{color:var(--echo);font-weight:400;}
 #heroChip b{color:var(--gold);}
-#godBtn{pointer-events:auto;cursor:pointer;transition:all .15s;}
-#godBtn:hover{border-color:var(--gold);color:var(--gold);}
+#godBtn{pointer-events:auto;cursor:pointer;transition:background .1s steps(2,end);}
+#godBtn:hover{border-color:var(--gold);color:var(--gold);background:#111a12;}
 
-#doorHud{position:absolute;top:66px;left:50%;transform:translateX(-50%);font-size:34px;font-family:var(--font-serif);
-  font-weight:800;color:var(--gold);text-shadow:0 0 24px rgba(255,210,77,.8);opacity:0;transition:opacity .25s;}
-#cds{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:16px;}
-.cd-slot{display:flex;flex-direction:column;align-items:center;gap:4px;}
-.cd-slot span{font-size:11px;letter-spacing:1px;color:#7e95b0;font-weight:600;}
-.cd{width:110px;height:4px;border-radius:2px;background:rgba(255,255,255,.08);overflow:hidden;}
-.cd i{display:block;height:100%;background:linear-gradient(90deg,var(--echo),#a5f3fc);box-shadow:0 0 10px var(--echo);width:100%;}
-#msg{position:absolute;left:50%;bottom:70px;transform:translateX(-50%);max-width:80%;text-align:center;
-  font-size:14px;line-height:1.7;color:#dcebfb;text-shadow:0 2px 10px #000;background:rgba(5,10,18,.8);
-  padding:8px 20px;border-radius:8px;border:1px solid rgba(92,233,255,.25);backdrop-filter:blur(12px);
-  box-shadow:0 8px 32px rgba(0,0,0,.6);}
-#toast{position:absolute;top:18%;left:50%;transform:translateX(-50%);font-size:24px;letter-spacing:8px;
-  font-family:var(--font-serif);font-weight:700;color:var(--gold);text-shadow:0 0 20px rgba(255,210,77,.8);
-  opacity:0;transition:opacity .35s;pointer-events:none;}
+/* 声纳记忆小地图：方形硬框，隐藏曾被声波照亮过的地形以外的区域 */
+#miniWrap{position:absolute;right:16px;bottom:16px;width:180px;height:120px;
+  background:#071019;border:2px solid #1b4254;box-shadow:var(--hard);opacity:.95;}
+#minimap{display:block;width:176px;height:116px;image-rendering:pixelated;}
+#miniLabel{position:absolute;right:0;top:-19px;font-size:12px;letter-spacing:1px;
+  color:#9dbbd3;text-shadow:2px 2px 0 #000;}
+body.coarse #miniWrap{top:12px;bottom:auto;right:12px;transform:scale(.82);transform-origin:top right;}
+
+#doorHud{position:absolute;top:70px;left:50%;transform:translateX(-50%);font-size:28px;font-family:var(--font-serif);
+  color:var(--gold);text-shadow:3px 3px 0 #2a1a00,0 0 0 #000;opacity:0;transition:opacity .15s steps(2,end);}
+#cds{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);display:flex;gap:18px;}
+.cd-slot{display:flex;flex-direction:column;align-items:center;gap:6px;}
+.cd-slot span{font-size:12px;letter-spacing:.5px;color:#a4b9ce;text-shadow:2px 2px 0 #000;}
+.cd{width:104px;height:8px;background:#050e16;border:2px solid #1a3d4c;overflow:hidden;}
+.cd i{display:block;height:100%;width:100%;
+  background:repeating-linear-gradient(90deg,#5ce9ff 0 5px,#2f93ad 5px 7px);}
+#msg{position:absolute;left:50%;bottom:72px;transform:translateX(-50%);max-width:80%;text-align:center;
+  font-size:15px;line-height:1.7;letter-spacing:0;color:#dcebfb;text-shadow:2px 2px 0 #000;background:#071320;
+  padding:7px 18px;border:2px solid #285066;box-shadow:var(--hard);white-space:nowrap;}
+#toast{position:absolute;top:17%;left:50%;transform:translateX(-50%);font-size:24px;letter-spacing:3px;
+  font-family:var(--font-serif);color:var(--gold);text-shadow:3px 3px 0 #2a1a00;
+  opacity:0;transition:opacity .2s steps(2,end);pointer-events:none;}
 #redV{position:fixed;inset:0;pointer-events:none;z-index:7;opacity:0;
-  background:radial-gradient(ellipse at center,transparent 40%,rgba(255,40,65,.6) 100%);transition:opacity .15s;}
+  background:rgba(255,40,65,.42);transition:opacity .15s steps(2,end);}
 #muteV{position:fixed;inset:0;pointer-events:none;z-index:7;
-  background:radial-gradient(ellipse at center,transparent 50%,rgba(184,97,255,.3) 100%);opacity:0;transition:opacity .3s;}
+  background:repeating-linear-gradient(45deg,rgba(184,97,255,.16) 0 3px,rgba(184,97,255,0) 3px 6px);opacity:0;transition:opacity .2s steps(2,end);}
 
-/* 触屏按键 */
+/* 触屏按键：方块按键与方形摇杆 */
 #touch{position:fixed;inset:0;z-index:9;display:none;}
-#stick{position:absolute;left:34px;bottom:38px;width:120px;height:120px;border-radius:50%;
-  background:rgba(92,233,255,.05);border:1.5px solid rgba(92,233,255,.25);backdrop-filter:blur(4px);}
-#stick i{position:absolute;left:50%;top:50%;width:50px;height:50px;margin:-25px 0 0 -25px;border-radius:50%;
-  background:rgba(92,233,255,.22);border:1.5px solid rgba(92,233,255,.5);box-shadow:0 0 12px rgba(92,233,255,.3);}
-#tbtns{position:absolute;right:24px;bottom:30px;display:grid;grid-template-columns:repeat(3,66px);gap:12px;}
-.tb{width:66px;height:66px;border-radius:50%;background:rgba(8,16,26,.7);
-  border:1.5px solid rgba(92,233,255,.35);color:var(--ink);font-size:13px;display:flex;align-items:center;
-  justify-content:center;text-align:center;backdrop-filter:blur(6px);font-weight:600;}
-.tb:active{background:rgba(92,233,255,.25);transform:scale(0.96);}
-.tb.gold{border-color:rgba(255,210,77,.6);color:var(--gold);}
-.tb.pur{border-color:rgba(184,97,255,.6);color:#dab3ff;}
+#stick{position:absolute;left:32px;bottom:36px;width:118px;height:118px;
+  background:#081320;border:3px solid #1f4d60;}
+#stick i{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;
+  background:#12506a;border:3px solid #47cfe8;}
+#tbtns{position:absolute;right:22px;bottom:28px;display:grid;grid-template-columns:repeat(3,64px);gap:10px;}
+.tb{width:64px;height:64px;background:#0a1622;border:3px solid #25596e;color:var(--ink);font-size:12px;
+  display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.3;
+  box-shadow:3px 3px 0 #01060b;}
+.tb:active{background:#2a7f96;transform:translate(2px,2px);box-shadow:1px 1px 0 #01060b;}
+.tb.gold{border-color:#a9791b;color:var(--gold);}
+.tb.pur{border-color:#6b39a5;color:#dab3ff;}
+.tb.cy{border-color:#2f93ad;color:#8defff;font-size:11px;}
 #tlook{position:absolute;inset:0;z-index:-1;}
 
-/* 覆盖层 */
+/* 覆盖层：深色抖动网点底，不再使用径向渐变 */
 .ov{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;
-  justify-content:center;background:radial-gradient(ellipse at center,rgba(5,11,20,.88),rgba(1,3,6,.98));
-  text-align:center;padding:24px;overflow-y:auto;}
+  justify-content:center;padding:24px;overflow-y:auto;text-align:center;
+  background-color:#04080f;
+  background-image:repeating-conic-gradient(#050b13 0% 25%,#03070e 0% 50%);
+  background-size:4px 4px;}
 .hidden{display:none!important;}
 
-.title{font-family:var(--font-serif);font-size:clamp(56px,11vw,120px);font-weight:900;letter-spacing:22px;
-  color:var(--echo);text-shadow:0 0 30px rgba(92,233,255,.5),0 0 80px rgba(92,233,255,.25);line-height:1.05;margin-left:14px;}
-.sub{font-size:clamp(13px,2vw,18px);letter-spacing:14px;color:#7e98bc;margin-top:12px;font-weight:600;}
-.tag{font-size:14px;color:#859bb8;margin-top:24px;max-width:620px;line-height:2.0;letter-spacing:1px;}
+.title{font-family:var(--font-serif);font-size:clamp(42px,8vw,86px);letter-spacing:12px;
+  color:var(--echo);text-shadow:4px 4px 0 #07222f,8px 8px 0 rgba(0,0,0,.5);
+  line-height:1.2;margin-left:12px;}
+.sub{font-size:clamp(11px,1.6vw,15px);letter-spacing:8px;color:#7e98bc;margin-top:14px;}
+.tag{font-size:14px;color:#8fa5c2;margin-top:22px;max-width:640px;line-height:2.1;letter-spacing:.5px;}
 
-.btn{margin-top:30px;padding:14px 44px;font-size:16px;letter-spacing:6px;color:#030b12;
-  font-family:var(--font-sans);font-weight:700;background:linear-gradient(135deg,#9ff4ff,#3bc4e6);
-  border:none;border-radius:6px;cursor:pointer;box-shadow:0 0 30px rgba(92,233,255,.45);
-  transition:all .2s cubic-bezier(0.16,1,0.3,1);position:relative;overflow:hidden;}
-.btn:hover{transform:translateY(-2px);box-shadow:0 0 45px rgba(92,233,255,.7);}
-.btn.ghost{background:transparent;color:var(--ink);border:1px solid rgba(220,235,255,.25);box-shadow:none;
-  margin-top:16px;font-size:14px;padding:10px 32px;}
-.btn.ghost:hover{background:rgba(255,255,255,.05);border-color:rgba(220,235,255,.5);}
-.btn.gold{background:linear-gradient(135deg,#ffe89e,#e6b53c);color:#1c1202;box-shadow:0 0 32px rgba(255,210,77,.45);}
+.btn{margin-top:26px;padding:12px 34px;font-size:14px;letter-spacing:4px;color:#021018;
+  font-family:var(--font-sans);background:#2f93ad;
+  border:3px solid #9ff4ff;border-right-color:#0c3543;border-bottom-color:#0c3543;
+  cursor:pointer;box-shadow:5px 5px 0 #01060b;transition:none;position:relative;}
+.btn:hover{background:#43b4d2;}
+.btn:active{transform:translate(3px,3px);box-shadow:2px 2px 0 #01060b;}
+.btn.ghost{background:#0a1622;color:var(--ink);border-color:#2b5f74;border-right-color:#0b2430;border-bottom-color:#0b2430;
+  margin-top:14px;font-size:12.5px;padding:9px 26px;}
+.btn.ghost:hover{background:#102437;border-color:#49c7e2;}
+.btn.gold{background:#e6b53c;color:#1c1202;border-color:#ffe89e;border-right-color:#7a570e;border-bottom-color:#7a570e;}
 
-.panel{background:rgba(8,16,28,.92);border:1px solid rgba(92,233,255,.2);border-radius:12px;
-  padding:32px 40px;max-width:760px;line-height:2;max-height:86vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.8);}
-.panel h2{font-family:var(--font-serif);color:var(--echo);letter-spacing:6px;margin-bottom:16px;font-size:24px;}
-.panel table{border-collapse:collapse;margin:12px auto;font-size:13.5px;width:100%;}
-.panel td{padding:6px 14px;border-bottom:1px solid rgba(140,170,200,.08);text-align:left;}
-.panel td:first-child{color:var(--echo);font-weight:600;}
+.panel{background:#0a1725;border:3px solid #1f4b5d;padding:22px 30px;max-width:820px;line-height:2;
+  max-height:86vh;overflow-y:auto;box-shadow:var(--hard),inset 0 0 0 3px #061019;}
+.panel h2{font-family:var(--font-serif);color:var(--echo);letter-spacing:6px;margin-bottom:16px;font-size:21px;
+  text-shadow:3px 3px 0 #07222f;}
+.panel table{border-collapse:collapse;margin:10px auto;font-size:13px;width:100%;}
+.panel td{padding:6px 12px;border-bottom:2px solid #10283a;text-align:left;vertical-align:top;}
+.panel td:first-child{color:var(--echo);}
 .panel .r{color:var(--foe);}.panel .a{color:var(--amber);}.panel .p{color:var(--shade);}.panel .g{color:var(--gold);}
 
 /* 升级卡牌 */
-#cards{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;margin-top:28px;}
-.card{width:220px;background:rgba(9,19,32,.9);border:1px solid rgba(92,233,255,.25);border-radius:10px;
-  padding:24px 20px;cursor:pointer;transition:all .2s ease;text-align:left;}
-.card:hover{transform:translateY(-8px);border-color:var(--echo);box-shadow:0 12px 40px rgba(92,233,255,.28);}
-.card .ic{font-size:28px;color:var(--echo);margin-bottom:12px;}
-.card h3{font-family:var(--font-serif);letter-spacing:2px;margin-bottom:8px;color:#fff;}
-.card p{font-size:12.5px;color:#92a8c0;line-height:1.7;}
-.card .num{margin-top:14px;font-size:11px;color:#617a98;letter-spacing:1px;}
+#cards{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;margin-top:26px;}
+.card{width:228px;background:#0a1826;border:3px solid #21495c;padding:20px 18px;cursor:pointer;
+  text-align:left;box-shadow:5px 5px 0 #01060b;transition:none;}
+.card:hover{transform:translate(-3px,-3px);border-color:var(--echo);box-shadow:8px 8px 0 #01060b;}
+.card .ic{font-size:24px;color:var(--echo);margin-bottom:10px;}
+.card h3{font-family:var(--font-serif);letter-spacing:2px;margin-bottom:8px;color:#fff;font-size:15px;}
+.card p{font-size:12px;color:#92a8c0;line-height:1.8;}
+.card .num{margin-top:12px;font-size:10.5px;color:#617a98;letter-spacing:1px;}
 
-.deadT{font-family:var(--font-serif);color:var(--foe);font-size:clamp(44px,7vw,76px);letter-spacing:14px;
-  text-shadow:0 0 35px rgba(255,77,97,.55);font-weight:800;}
-.winT{font-family:var(--font-serif);color:var(--good);font-size:clamp(44px,7vw,76px);letter-spacing:14px;
-  text-shadow:0 0 35px rgba(82,246,158,.55);font-weight:800;}
-.stats{display:grid;grid-template-columns:repeat(2,minmax(160px,1fr));gap:8px 36px;margin:24px auto;max-width:540px;}
-.stats span{color:#7a93ae;text-align:right;font-size:13.5px;}
-.stats b{color:var(--ink);text-align:left;font-size:14.5px;}
+.deadT{font-family:var(--font-serif);color:var(--foe);font-size:clamp(30px,5.4vw,54px);letter-spacing:10px;
+  text-shadow:4px 4px 0 #2a0710;}
+.winT{font-family:var(--font-serif);color:var(--good);font-size:clamp(30px,5.4vw,54px);letter-spacing:10px;
+  text-shadow:4px 4px 0 #06281a;}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(160px,1fr));gap:10px 36px;margin:22px auto;max-width:560px;}
+.stats span{color:#7a93ae;text-align:right;font-size:12.5px;}
+.stats b{color:var(--ink);text-align:left;font-size:13px;font-weight:400;}
 
 /* ========================================================
-   选英雄专属界面：3D 高清雕刻展台（支持旋转查看）与顺滑滚动列表
+   选英雄专属界面：像素展台 + 方块卡片列表
    ======================================================== */
-#ovHero{padding:24px;justify-content:flex-start;overflow-y:auto;}
-.hero-wrapper{width:100%;max-width:1120px;margin:auto;display:flex;flex-direction:column;gap:18px;}
-.hero-header{margin-top:6px;text-align:center;}
-.hero-header h2{font-family:var(--font-serif);font-size:clamp(26px,4.5vw,36px);letter-spacing:10px;
-  color:var(--echo);text-shadow:0 0 24px rgba(92,233,255,.5);font-weight:800;}
-.hero-header p{color:#7e96b5;font-size:13px;letter-spacing:3px;margin-top:6px;}
+#ovHero{padding:20px;justify-content:flex-start;overflow-y:auto;}
+.hero-wrapper{width:100%;max-width:1120px;margin:auto;display:flex;flex-direction:column;gap:16px;}
+.hero-header{margin-top:2px;text-align:center;}
+.hero-header h2{font-family:var(--font-serif);font-size:clamp(20px,3.4vw,28px);letter-spacing:8px;
+  color:var(--echo);text-shadow:3px 3px 0 #07222f;}
+.hero-header p{color:#7e96b5;font-size:12px;letter-spacing:2px;margin-top:8px;}
 
-.hero-main-layout{display:grid;grid-template-columns:380px 1fr;gap:24px;align-items:stretch;}
+.hero-main-layout{display:grid;grid-template-columns:380px 1fr;gap:20px;align-items:stretch;}
 @media(max-width:880px){
   .hero-main-layout{grid-template-columns:1fr;display:flex;flex-direction:column;}
 }
 
-/* 3D 展台高光展示盒：支持拖拽旋转 */
-.hero-preview-box{background:linear-gradient(180deg,rgba(11,21,34,.9),rgba(5,11,18,.96));
-  border:1px solid rgba(92,233,255,.28);border-radius:14px;padding:22px;
-  display:flex;flex-direction:column;align-items:center;box-shadow:0 20px 50px rgba(0,0,0,.7);
-  position:relative;overflow:hidden;}
-.hero-preview-box::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 30%,rgba(92,233,255,.1),transparent 68%);pointer-events:none;}
-#heroCanvas{width:100%;height:290px;display:block;border-radius:8px;cursor:grab;}
+/* 3D 像素展台：低分辨率缓冲 + 最近邻放大 */
+.hero-preview-box{background:#071320;border:3px solid #245b70;
+  box-shadow:6px 6px 0 #01060b,inset 0 0 0 3px #040d16;padding:16px;
+  display:flex;flex-direction:column;align-items:center;position:relative;}
+#heroCanvas{width:100%;height:258px;display:block;cursor:grab;image-rendering:pixelated;
+  background-color:#061019;
+  background-image:repeating-conic-gradient(#07121c 0% 25%,#050e17 0% 50%);
+  background-size:6px 6px;}
 #heroCanvas:active{cursor:grabbing;}
-.preview-tip{font-size:11px;color:#5e7592;letter-spacing:1px;margin-top:4px;}
-.preview-name{font-family:var(--font-serif);font-size:24px;letter-spacing:5px;font-weight:700;margin-top:10px;}
-.preview-tagline{font-size:12.5px;color:#859fbe;margin-top:4px;letter-spacing:1px;text-align:center;line-height:1.5;}
-.preview-stats{display:flex;gap:10px;margin-top:14px;width:100%;justify-content:center;flex-wrap:wrap;}
-.stat-pill{background:rgba(255,255,255,.05);padding:5px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.08);
-  font-size:12.5px;color:#94a9c2;display:flex;gap:5px;align-items:center;}
-.stat-pill b{color:var(--echo);font-weight:700;}
+.preview-tip{font-size:10.5px;color:#5e7592;letter-spacing:.5px;margin-top:8px;}
+.preview-name{font-family:var(--font-serif);font-size:18px;letter-spacing:3px;margin-top:10px;
+  text-shadow:3px 3px 0 #04121b;}
+.preview-tagline{font-size:12px;color:#859fbe;margin-top:6px;letter-spacing:.5px;text-align:center;line-height:1.6;}
+.preview-stats{display:flex;gap:8px;margin-top:14px;width:100%;justify-content:center;flex-wrap:wrap;}
+.stat-pill{background:#0c1d2b;padding:4px 10px;border:2px solid #1d4557;
+  font-size:11px;color:#94a9c2;display:flex;gap:5px;align-items:center;}
+.stat-pill b{color:var(--echo);font-weight:400;}
 
-/* 英雄卡片纵向顺畅滚动列表 */
+/* 英雄卡片纵向列表 */
 .hero-scroll-container{
   max-height:480px;
   overflow-y:scroll;
   -webkit-overflow-scrolling:touch;
-  padding:6px 14px 14px 4px;
+  padding:6px 14px 14px 6px;
   display:flex;
   flex-direction:column;
-  gap:16px;
-  border-radius:14px;
-  border:1px solid rgba(92,233,255,.14);
-  background:rgba(5,12,20,.6);
+  gap:10px;
+  border:3px solid #17384a;
+  background:#050d16;
+  box-shadow:inset 0 0 0 3px #03090f;
 }
-.hero-scroll-container::-webkit-scrollbar{width:7px;}
-.hero-scroll-container::-webkit-scrollbar-track{background:rgba(3,8,14,.7);border-radius:4px;}
-.hero-scroll-container::-webkit-scrollbar-thumb{background:rgba(92,233,255,.35);border-radius:4px;}
-.hero-scroll-container::-webkit-scrollbar-thumb:hover{background:rgba(92,233,255,.65);}
+.hero-scroll-container::after{content:"";position:sticky;bottom:0;display:block;height:26px;margin-top:-26px;
+  background:linear-gradient(180deg,rgba(5,13,22,0),#050d16 78%);pointer-events:none;}
+.hero-scroll-container::-webkit-scrollbar{width:12px;}
+.hero-scroll-container::-webkit-scrollbar-track{background:#050d16;border-left:2px solid #14303f;}
+.hero-scroll-container::-webkit-scrollbar-thumb{background:#2f93ad;border:2px solid #050d16;}
+.hero-scroll-container::-webkit-scrollbar-thumb:hover{background:#5ce9ff;}
 
 .hero-card{
-  background:linear-gradient(135deg,rgba(10,20,32,.85),rgba(6,13,22,.9));
-  border:1.5px solid rgba(92,233,255,.18);
-  border-radius:10px;
-  padding:18px 22px;
+  background:#0a1826;
+  border:3px solid #1c4154;
+  padding:12px 16px;
   text-align:left;
   cursor:pointer;
-  transition:all .18s cubic-bezier(0.16,1,0.3,1);
+  transition:none;
   position:relative;
+  box-shadow:4px 4px 0 #01060b;
 }
-.hero-card:hover{border-color:rgba(92,233,255,.5);transform:translateX(4px);background:rgba(14,28,44,.95);}
-.hero-card.active{border-color:var(--echo);background:linear-gradient(135deg,rgba(16,36,56,.95),rgba(8,20,32,.98));
-  box-shadow:0 8px 30px rgba(92,233,255,.25);transform:translateX(6px);}
-.hero-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
-.hero-card-title{font-family:var(--font-serif);font-size:18px;font-weight:700;letter-spacing:3px;}
-.hero-badge{font-size:11px;padding:2px 8px;border-radius:4px;border:1px solid currentColor;letter-spacing:1px;}
-.hero-desc{font-size:13px;color:#9cb2cc;line-height:1.6;margin-bottom:12px;}
-.hero-traits{display:flex;flex-direction:column;gap:6px;font-size:12px;background:rgba(0,0,0,.3);padding:10px 12px;border-radius:6px;}
-.hero-trait-row{display:flex;gap:6px;line-height:1.6;}
-.hero-trait-row span{color:var(--echo);flex-shrink:0;font-weight:600;}
+.hero-card:hover{border-color:#3fa8c4;transform:translate(-2px,-2px);box-shadow:6px 6px 0 #01060b;}
+.hero-card.active{border-color:var(--echo);background:#0d2434;
+  box-shadow:6px 6px 0 #01060b,inset 0 0 0 2px #0a3550;}
+.hero-card.active::before{content:"";position:absolute;left:-3px;top:10px;bottom:10px;width:4px;background:var(--echo);}
+.hero-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;}
+.hero-card-title{font-family:var(--font-serif);font-size:15px;letter-spacing:2px;}
+.hero-badge{font-size:10px;padding:2px 7px;border:2px solid currentColor;letter-spacing:.5px;}
+.hero-desc{font-size:12.5px;color:#9cb2cc;line-height:1.7;margin-bottom:8px;}
+.hero-traits{display:flex;flex-direction:column;gap:4px;font-size:11.5px;background:#061019;
+  padding:7px 9px;border:2px solid #12303f;}
+.hero-trait-row{display:flex;gap:6px;line-height:1.7;}
+.hero-trait-row span{color:var(--echo);flex-shrink:0;}
 
-.hero-footer-bar{display:flex;justify-content:center;gap:20px;margin-top:10px;align-items:center;}
+.hero-footer-bar{display:flex;justify-content:center;gap:18px;margin-top:8px;align-items:center;}
 
-#rotate{position:fixed;inset:0;z-index:40;background:#020408;display:none;flex-direction:column;
-  align-items:center;justify-content:center;text-align:center;}
-#rotate svg{width:80px;height:80px;animation:rot 2s ease-in-out infinite;}
+#rotate{position:fixed;inset:0;z-index:40;background:#04080f;display:none;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;
+  background-image:repeating-conic-gradient(#050b13 0% 25%,#03070e 0% 50%);background-size:4px 4px;}
+#rotate svg{width:80px;height:80px;animation:rot 1.2s steps(2,end) infinite;shape-rendering:crispEdges;}
 @keyframes rot{0%,40%{transform:rotate(0);}60%,100%{transform:rotate(90deg);}}
-#rotate .t{font-family:var(--font-serif);font-size:24px;letter-spacing:8px;color:var(--echo);margin-top:22px;}
-#rotate .s{color:#768ea8;font-size:13px;margin-top:12px;line-height:1.8;}
+#rotate .t{font-family:var(--font-serif);font-size:20px;letter-spacing:6px;color:var(--echo);margin-top:22px;
+  text-shadow:3px 3px 0 #07222f;}
+#rotate .s{color:#768ea8;font-size:12px;margin-top:12px;line-height:1.9;}
 </style>
 </head>
 <body>
@@ -227,6 +263,8 @@ html,body{width:100%;height:100%;background:#020408;overflow:hidden;
     <div class="hud-meta">楼层 <b id="floor">1</b> / 4</div>
     <div class="hud-meta">音石 <b id="stones">3</b></div>
     <div class="hud-meta">静音钟 <b id="bells">2</b></div>
+    <div class="hud-meta" id="coreChip">精粹 <b id="cores">0</b></div>
+    <div class="hud-meta" id="comboChip" style="display:none">连杀 <b id="combo">0</b></div>
     <div class="hud-meta" id="godBtn">无敌模式</div>
   </div>
   <div id="doorHud"><span id="doorT">3.5</span>s</div>
@@ -241,6 +279,14 @@ html,body{width:100%;height:100%;background:#020408;overflow:hidden;
       <span>重踏 CD</span>
       <div class="cd"><i id="cdStomp"></i></div>
     </div>
+    <div class="cd-slot">
+      <span>翻滚 CD</span>
+      <div class="cd"><i id="cdDash"></i></div>
+    </div>
+  </div>
+  <div id="miniWrap">
+    <canvas id="minimap" width="180" height="120"></canvas>
+    <div id="miniLabel">声 纳 记 忆</div>
   </div>
 </div>
 
@@ -251,6 +297,7 @@ html,body{width:100%;height:100%;background:#020408;overflow:hidden;
     <div class="tb" id="t-strike">刺击</div>
     <div class="tb" id="t-stone">投石</div>
     <div class="tb pur" id="t-bell">静音</div>
+    <div class="tb cy" id="t-dash">翻滚</div>
     <div class="tb" id="t-stomp">重踏</div>
     <div class="tb gold" id="t-inter">敲门</div>
   </div>
@@ -312,6 +359,11 @@ html,body{width:100%;height:100%;background:#020408;overflow:hidden;
       <tr><td>投掷音石（朝准星投掷）</td><td>鼠标右键 / K 键 / 投石按键</td></tr>
       <tr><td>重踏（广域回声·震退击退）</td><td>空格 / 空格键 / 重踏按键</td></tr>
       <tr><td>静音钟（3 秒全频寂静）</td><td>Q 键 / 静音按键</td></tr>
+      <tr><td>无声翻滚（短暂无敌、不发声）</td><td>Shift 键 / 翻滚按键</td></tr>
+      <tr><td>声骸精粹（击杀掉落，集满 4 颗生命上限 +1）</td><td>靠近自动吸附</td></tr>
+      <tr><td>织音者 NPC（低语一次馈赠，并暗示隐秘石室）</td><td>贴近按 E</td></tr>
+      <tr><td>隐秘石室（声波照到墙上裂纹即崩开，内有额外古匣）</td><td>用声波扫过可疑石壁</td></tr>
+      <tr><td>声纳记忆图（小地图）</td><td>M 键开合 · 仅显影曾被声波照亮过的地形</td></tr>
       <tr><td>敲响鸣门 / 互动遗迹</td><td>E 键 / 敲门按键（贴近金色鸣门）</td></tr>
       <tr><td>调试与辅助</td><td>P 暂停 · G 无敌模式 · V 全图透视 · R 重开</td></tr>
     </table>
@@ -438,7 +490,15 @@ let selectedHeroId = "blade";
 const CFG = {
   ruleset_id:"echoloc-v3.0",
   cell:32, mapW:30, mapH:20,
-  player:{r:9,speed:132,hp:3,iframes:1.6,knockback:0},
+  player:{r:9,bodyR:6,speed:132,hp:3,iframes:1.6,knockback:0,
+    dash:{cd:1.5,dur:0.17,mult:3.1,iframes:0.42}},
+  core:{life:11,magnet:130,collect:26,maxStone:14,perHp:4},
+  combo:{window:3.6,max:9},
+  // 碰撞体按模型实际轮廓给：立柱最外圈是 0.74 世界单位的柱脚，喷泉石盆外沿约 1.0。
+  // 原来立柱吃 11（≈1.4 世界单位）、喷泉吃整格 32×32 的方块判定，都远大于模型本身。
+  pillarBlock:6,
+  pillarBeam:8,
+  fountainBlock:9,
   soundSpeed:370,
   glow:{wall:1.8,foe:0.95,wallF3:1.2},
   actions:{
@@ -452,7 +512,7 @@ const CFG = {
   },
   stompKnockback:55, stompReach:68,
   doorOpenTime:3.5,
-  hear:{wanderer:0.16,husher:0.45},
+  hear:{wanderer:0.16,husher:0.45,elite:0.10},
   foes:{
     wanderer:{hp:1,dmg:1,wander:34,chase:78,memory:2.6,r:11},
     howler:{hp:1,r:13},
@@ -460,7 +520,7 @@ const CFG = {
   },
   boss:{
     hp:3,periods:[3.2,2.6,2.0],beamLen:440,halfDeg:11,
-    warn:0.6,fire:0.35,backWindow:1.2,
+    warn:0.9,fire:0.35,backWindow:1.2,
     turnRate:3.0,listenWindow:1.5,pillarCd:8,
     hitBackDist:40,hitBackArc:Math.PI*2/3,
   },
@@ -544,6 +604,8 @@ const Audio2={
       case"bossHurt":o(210,"sawtooth",0.5,0.55,60);break;
       case"upgrade":o(440,"sine",0.15,0.4);setTimeout(()=>o(660,"sine",0.25,0.45),120);break;
       case"potBreak":o(340,"triangle",0.08,0.45,130);noise(0.15,0.38,1800);break;
+      case"dash":noise(0.16,0.36,1600,"highpass",520);o(420,"triangle",0.12,0.22,240);break;
+      case"pickup":[880,1320].forEach((f,i)=>setTimeout(()=>o(f,"sine",0.18,0.34),i*70));break;
       case"leap":noise(0.18,0.45,1300,"lowpass",320);o(190,"sawtooth",0.18,0.32,85);break;
       case"waterSplash":o(240,"sine",0.16,0.38,120);noise(0.18,0.48,800,"bandpass",300);break;
       case"chestOpen":o(280,"triangle",0.22,0.45,420);noise(0.15,0.25,1200);[523,659,784,1046].forEach((f,i)=>setTimeout(()=>o(f,"sine",0.4,0.35/(i+1)),140+i*90));break;
@@ -567,7 +629,7 @@ function genDungeon(nRooms){
   const W=CFG.mapW,H=CFG.mapH;
   const grid=Array.from({length:H},()=>Array(W).fill(1));
   const rooms=[];
-  const pools=[];
+  const fountains=[];
   const pillars=[];
   const chests=[];
 
@@ -616,15 +678,17 @@ function genDungeon(nRooms){
         }
       }
     }
-    // 特色 2：浅水回音水池（水花泛动、踏水声纳泛波，减速并在暗中暴露敌我涉水踪迹）
-    else if(!isSpawn&&(i%2===0||Math.random()<0.6)){
-      const pw=Math.max(2,rw-3),ph=Math.max(2,rh-2);
-      const px=rx+1,py=ry+1;
-      pools.push({
-        x:px*CFG.cell,y:py*CFG.cell,
-        w:pw*CFG.cell,h:ph*CFG.cell,
-        cx:px*CFG.cell+pw*CFG.cell/2,cy:py*CFG.cell+ph*CFG.cell/2
-      });
+    // 特色 2：回音喷泉（占房间正中一格石座，喷涌的水声持续向外扩散声纳涟漪）
+    else if(!isSpawn&&!isDoor&&(i%2===0||Math.random()<0.6)){
+      const fx=rx+(rw>>1),fy=ry+(rh>>1);
+      if(grid[fy]&&grid[fy][fx]===0&&!fountains.some(f=>f.cx===fx&&f.cy===fy)){
+        grid[fy][fx]=1;
+        fountains.push({
+          cx:fx,cy:fy,
+          x:fx*CFG.cell+16,y:fy*CFG.cell+16,
+          seed:rand(0,TAU)
+        });
+      }
     }
 
     // 特色 3：古代回声宝箱（藏于房间深处或角落）
@@ -639,14 +703,21 @@ function genDungeon(nRooms){
     }
   }
 
-  // 保证至少有 1 个水池和 1 个宝箱
-  if(pools.length===0&&rooms.length>1){
+  // 保证至少有 1 座喷泉和 1 个宝箱（避开出生房与出口房）
+  if(fountains.length===0&&rooms.length>2){
     const r=rooms[1];
-    pools.push({
-      x:(r[0]+1)*CFG.cell,y:(r[1]+1)*CFG.cell,
-      w:Math.max(2,r[2]-2)*CFG.cell,h:Math.max(2,r[3]-2)*CFG.cell,
-      cx:(r[0]+1)*CFG.cell+Math.max(2,r[2]-2)*CFG.cell/2,cy:(r[1]+1)*CFG.cell+Math.max(2,r[3]-2)*CFG.cell/2
+    const cands=[];
+    for(let y=r[1]+1;y<r[1]+r[3]-1;y++)for(let x=r[0]+1;x<r[0]+r[2]-1;x++)
+      if(grid[y][x]===0)cands.push([x,y]);
+    cands.sort((a,b)=>{
+      const dc=a=>Math.abs(a[0]-(r[0]+(r[2]>>1)))+Math.abs(a[1]-(r[1]+(r[3]>>1)));
+      return dc(a)-dc(b);
     });
+    if(cands.length){
+      const[cx,cy]=cands[0];
+      grid[cy][cx]=1;
+      fountains.push({cx,cy,x:cx*CFG.cell+16,y:cy*CFG.cell+16,seed:rand(0,TAU)});
+    }
   }
   if(chests.length===0&&rooms.length>1){
     const r=rooms[rooms.length>2?2:1];
@@ -656,7 +727,69 @@ function genDungeon(nRooms){
     });
   }
 
-  return{grid,rooms,centers,spawn:centers[0],door:centers[centers.length-1],pools,pillars,chests};
+  // 秘密石室：在房间侧壁外凿出一间被整面石墙封死的暗室，只有声波照到裂纹才会开启
+  const secret=carveSecretRoom(grid,rooms);
+  if(secret){
+    const sc=secret.room,ccx=(sc.x+(sc.w>>1))*CFG.cell+16,ccy=(sc.y+(sc.h>>1))*CFG.cell+16;
+    chests.push({x:ccx,y:ccy,opened:false,glow:0,grp:null,secret:true});
+  }
+
+  // 织音者 NPC：站在中段房间中央，为潜行者提供一次低语馈赠
+  const npcs=[];
+  {
+    const cand=rooms.filter((r,i)=>i>0&&i<rooms.length-2);
+    const r=cand.length?cand[randi(0,cand.length-1)]:rooms[0];
+    let cx=r[0]+(r[2]>>1),cy=r[1]+(r[3]>>1);
+    if(grid[cy][cx]!==0){
+      outer:for(let y=r[1]+1;y<r[1]+r[3]-1;y++)for(let x=r[0]+1;x<r[0]+r[2]-1;x++)
+        if(grid[y][x]===0){cx=x;cy=y;break outer;}
+    }
+    if(grid[cy][cx]===0)
+      npcs.push({x:cx*CFG.cell+16,y:cy*CFG.cell+16,talked:false,lines:0,grp:null});
+  }
+
+  return{grid,rooms,centers,spawn:centers[0],door:centers[centers.length-1],fountains,pillars,chests,secret,npcs};
+}
+
+/* 在既有房间外侧凿出封闭暗室：返回门格、石室范围与是否已开启 */
+function carveSecretRoom(grid,rooms){
+  const W=CFG.mapW,H=CFG.mapH;
+  if(rooms.length<3)return null;
+  for(let attempt=0;attempt<70;attempt++){
+    const ri=randi(1,rooms.length-2);
+    const rx=rooms[ri][0],ry=rooms[ri][1],rw=rooms[ri][2],rh=rooms[ri][3];
+    const dir=randi(0,3);
+    const span=randi(2,3),depth=randi(2,3);
+    let dx,dy,sx,sy,w,h;
+    if(dir===0){dx=rx+randi(1,rw-2);dy=ry-1;sx=dx-1;sy=dy-depth;w=span;h=depth;}
+    else if(dir===1){dx=rx+randi(1,rw-2);dy=ry+rh;sx=dx-1;sy=dy+1;w=span;h=depth;}
+    else if(dir===2){dy=ry+randi(1,rh-2);dx=rx-1;sy=dy-1;sx=dx-depth;w=depth;h=span;}
+    else{dy=ry+randi(1,rh-2);dx=rx+rw;sy=dy-1;sx=dx+1;w=depth;h=span;}
+    if(sx<1||sy<1||sx+w>W-1||sy+h>H-1)continue;
+    if(grid[dy][dx]!==1)continue;
+    let ok=true;
+    for(let y=sy;y<sy+h&&ok;y++)for(let x=sx;x<sx+w&&ok;x++){
+      if(grid[y][x]!==1){ok=false;break;}
+      for(const[nx,ny]of[[1,0],[-1,0],[0,1],[0,-1]]){
+        const ax=x+nx,ay=y+ny;
+        if(ax<0||ay<0||ax>=W||ay>=H)continue;
+        const inSecret=ax>=sx&&ax<sx+w&&ay>=sy&&ay<sy+h;
+        if(grid[ay][ax]===0&&!(ax===dx&&ay===dy)&&!inSecret){ok=false;break;}
+      }
+    }
+    if(!ok)continue;
+    // 记录门外侧（房间一侧）的可用地面格，用于贴出墙面裂纹
+    let face=null;
+    for(const[nx,ny]of[[1,0],[-1,0],[0,1],[0,-1]]){
+      const ax=dx+nx,ay=dy+ny;
+      if(ax<0||ay<0||ax>=W||ay>=H)continue;
+      if(grid[ay][ax]===0){face={x:ax,y:ay};break;}
+    }
+    const cells=[];
+    for(let y=sy;y<sy+h;y++)for(let x=sx;x<sx+w;x++){grid[y][x]=0;cells.push({x,y});}
+    return{door:{x:dx,y:dy},face,cells,room:{x:sx,y:sy,w,h},revealed:false,hinted:false};
+  }
+  return null;
 }
 
 function genBossHall(){
@@ -664,8 +797,9 @@ function genBossHall(){
   const grid=Array.from({length:H},()=>Array(W).fill(1));
   const x0=5,y0=3,x1=24,y1=16;
   for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)grid[y][x]=0;
-  const spawn={x:15,y:16},boss={x:15,y:10};
-  const pillars=[{x:15,y:4},{x:20,y:13},{x:9,y:13}];
+  const spawn={x:8,y:16},boss={x:15,y:10};
+  const pillars=[{x:15,y:4},{x:20,y:13},{x:9,y:13},{x:12,y:7},{x:19,y:7}];
+  // 圣殿立柱是实体掩体：挡住玩家与声束，但保留网格可走，避免变成方块墙
   return{grid,rooms:[[x0,y0,x1-x0+1,y1-y0+1]],centers:[boss],spawn,door:null,boss:true,pillars};
 }
 
@@ -706,9 +840,10 @@ function newRun(){
     floor:0,t:0,grid:null,rooms:null,
     p:{x:0,y:0,hp:hero.hp,maxHp:hero.hp,speed:hero.speed,face:0,
        stones:hero.stones,bells:hero.bells,
-       stompCd:0,strikeCd:0,bellT:0,bellCd:0,stepT:0,iframes:0,items:{},charmUsed:false,killCount:0},
-    foes:[],waves:[],stonesFly:[],particles:[],pots:[],bullets:[],
-    pools:[],chests:[],pillars:[],
+       stompCd:0,strikeCd:0,bellT:0,bellCd:0,stepT:0,iframes:0,items:{},charmUsed:false,killCount:0,
+       dashCd:0,dashT:0,dashVx:0,dashVy:0,cores:0},
+    foes:[],waves:[],stonesFly:[],particles:[],pots:[],bullets:[],cores:[],
+    pools:[],chests:[],pillars:[],npcs:[],fountains:[],secret:null,
     glow:null,door:null,boss:null,
     stats:{time:0,stomps:0,stonesThrown:0,kills:0,light:0,hurt:0,howls:0},
     fields:new Map(),over:false,isTransitioning:false,
@@ -718,17 +853,19 @@ function newRun(){
 
 function startFloor(idx){
   G.floor=idx;G.t=0;
-  G.foes=[];G.waves=[];G.stonesFly=[];G.particles=[];G.pots=[];G.bullets=[];
-  G.pools=[];G.chests=[];G.pillars=[];
+  G.foes=[];G.waves=[];G.stonesFly=[];G.particles=[];G.pots=[];G.bullets=[];G.cores=[];
+  G.pools=[];G.chests=[];G.pillars=[];G.npcs=[];G.fountains=[];G.secret=null;G.secretFloor=null;G.secretRune=null;
   G.fields.clear();
   G.p.stompCd=0;G.p.strikeCd=0;G.p.bellT=0;G.p.bellCd=0;G.p.iframes=0;
+  G.p.dashCd=0;G.p.dashT=0;
+  G.fl={t:0,hurt:0};
   shake=0;redFlash=0;
 
   let d;
   if(idx===3){
     d=genBossHall();const bc=d.centers[0];
-    G.boss={x:bc.x*CFG.cell+16,y:bc.y*CFG.cell+16,angle:Math.PI/2,hp:CFG.boss.hp,
-      phase:"listen",phaseT:CFG.boss.periods[0],target:null,dead:false,hurtFlash:0,glow:0,
+    G.boss={x:bc.x*CFG.cell+16,y:bc.y*CFG.cell+16,angle:Math.PI,hp:CFG.boss.hp,
+      phase:"listen",phaseT:CFG.boss.periods[0]+1.2,target:null,dead:false,hurtFlash:0,glow:0,
       fireBeams:[],fired:false};
     G.pillars=d.pillars.map(p=>({x:p.x*CFG.cell+16,y:p.y*CFG.cell+16,cd:0,glow:0,seed:Math.random()*10}));
     G.p.stones=CFG.res.bossStones+(G.p.items.pouch?2:0);
@@ -736,8 +873,10 @@ function startFloor(idx){
     setMsg("听声者在黑暗中窥伺。<b>投石或鸣击共鸣柱</b>，误导其声纳判定。");
   }else{
     const f=CFG.floors[idx];d=genDungeon(f.rooms);const dr=CFG.cell;
-    G.pools=d.pools||[];
+    G.fountains=(d.fountains||[]).map(fn=>({...fn,glow:0}));
     G.chests=d.chests||[];
+    G.npcs=d.npcs||[];
+    G.secret=d.secret||null;
     G.pillars=(d.pillars||[]).map(p=>({x:p.x,y:p.y,cd:0,glow:0,seed:Math.random()*10}));
     G.door={x:d.door.x*dr+16,y:d.door.y*dr+16,state:"sealed",t:0,pulse:rand(0,3),glow:0,t2:rand(2,5)};
     const hStones=G.hero.stones+(G.p.items.pouch?2:0);
@@ -751,9 +890,25 @@ function startFloor(idx){
     else setMsg(`已潜入 <b>${f.name}</b> · 警惕暗中伺机的盲怪。`);
   }
   G.grid=d.grid;G.rooms=d.rooms;const dr=CFG.cell;
+  // 立柱/喷泉所在的格子只用于生成与寻路占位，碰撞改由下面的圆形碰撞体处理，
+  // 否则玩家会被一格（32px）的隐形方块挡在离模型很远的地方。
+  G.propCells=new Set();
+  for(const pl of G.pillars)G.propCells.add(Math.floor(pl.x/CFG.cell)+","+Math.floor(pl.y/CFG.cell));
+  for(const fn of G.fountains)if(fn.cx!==undefined)G.propCells.add(fn.cx+","+fn.cy);
   G.glow=Array.from({length:CFG.mapH},()=>Array(CFG.mapW).fill(0));
+  G.mini=Array.from({length:CFG.mapH},()=>Array(CFG.mapW).fill(0));
   G.p.x=d.spawn.x*dr+16;G.p.y=d.spawn.y*dr+16;
   G.foes.forEach(f=>{f.glow=0;f.seen=0;});
+
+  // 起始房间直接写入声纳记忆：小地图一开场就勾出脚下房间的轮廓
+  {
+    const room=G.rooms&&G.rooms[0];
+    if(room){
+      const[x0,y0,rw,rh]=room;
+      for(let y=y0;y<y0+rh;y++)for(let x=x0;x<x0+rw;x++)
+        if(y<CFG.mapH&&x<CFG.mapW&&G.grid[y][x]===0)G.mini[y][x]=0.6;
+    }
+  }
 
   buildWorld(d);
   addWave(G.p.x,G.p.y,96,0.5,G.hero.color,"enter");
@@ -770,7 +925,11 @@ function placeFoes(d,f){
     }
     return floorCells[floorCells.length-1];
   };
-  for(let i=0;i<f.wanderers;i++){const c=take();G.foes.push(mkFoe("wanderer",c.x*dr+16,c.y*dr+16));}
+  for(let i=0;i<f.wanderers;i++){const c=take();
+    // 精英盲行者：体型更大、记得更久的追猎者，击杀掉落双份声骸精粹
+    const elite=Math.random()<0.18+f.wanderers*0.05;
+    G.foes.push(mkFoe("wanderer",c.x*dr+16,c.y*dr+16,elite));
+  }
   for(let i=0;i<f.howlers;i++){
     const room=d.rooms[Math.min(i+1,d.rooms.length-2)]||d.rooms[0];
     const cx=(room[0]+(room[2]>>1))*dr+16,cy=(room[1]+(room[3]>>1))*dr+16;
@@ -794,13 +953,15 @@ function placeProps(d){
   for(let i=0;i<numPots&&floorCells.length;i++){
     const idx=randi(0,floorCells.length-1);
     const c=floorCells.splice(idx,1)[0];
-    G.pots.push({x:c.x*dr+16,y:c.y*dr+16,hp:1,broken:false,grp:null});
+    G.pots.push({x:c.x*dr+16,y:c.y*dr+16,hp:1,broken:false,grp:null,variant:randi(0,2)});
   }
 }
 
-function mkFoe(type,x,y){
+function mkFoe(type,x,y,elite){
   const c=CFG.foes[type];
-  return{type,x,y,hp:c.hp,r:c.r,glow:0,seen:0,
+  const ex=elite?1.34:1;
+  return{type,elite:!!elite,x,y,hp:elite?2:c.hp,r:c.r*ex*1.06,
+    glow:0,seen:0,scale:ex,
     state:type==="howler"?"idle":"wander",tx:x,ty:y,mem:0,dir:rand(0,TAU),
     wanderT:rand(0.5,2.5),howlT:rand(2.5,CFG.actions.howl.cd),huntT:0,alert:0,
     hitFlash:0,seed:Math.random()*100,grp:null,
@@ -826,46 +987,95 @@ function lineBlocked(x0,y0,x1,y1){
 /* ===================== 玩家动作与英雄技能 ===================== */
 function isMuted(){return G.p.bellT>0;}
 
+/* 声束是否被共鸣柱遮断：让立柱成为真正可用的掩体 */
+function beamBlockedByPillar(bx,by,px,py){
+  if(!G.pillars||!G.pillars.length)return false;
+  const dx=px-bx,dy=py-by,len=Math.hypot(dx,dy)||1;
+  for(const pl of G.pillars){
+    const t=clamp(((pl.x-bx)*dx+(pl.y-by)*dy)/(len*len),0,1);
+    const cx=bx+dx*t,cy=by+dy*t;
+    if(dist(pl.x,pl.y,cx,cy)<CFG.pillarBeam)return true;
+  }
+  return false;
+}
+
+// 立柱/喷泉所在格不参与方块碰撞，只作为占位标记
+function isPropCell(x,y){return !!(G.propCells&&G.propCells.has(x+","+y));}
+
+// 立柱与喷泉的圆形碰撞体：半径贴合模型外轮廓，玩家可以贴着柱脚、盆沿滑过去，
+// 不再被一格见方的隐形方块挡在半格之外。
+function pushOutProps(p,r){
+  if(G.pillars)for(const pl of G.pillars){
+    const dx=p.x-pl.x,dy=p.y-pl.y,d=Math.hypot(dx,dy),min=r+CFG.pillarBlock;
+    if(d>=min)continue;
+    if(d>0.001){p.x=pl.x+dx/d*min;p.y=pl.y+dy/d*min;}
+    else p.x=pl.x+min;
+  }
+  if(G.fountains)for(const fn of G.fountains){
+    const dx=p.x-fn.x,dy=p.y-fn.y,d=Math.hypot(dx,dy),min=r+CFG.fountainBlock;
+    if(d>=min)continue;
+    if(d>0.001){p.x=fn.x+dx/d*min;p.y=fn.y+dy/d*min;}
+    else p.x=fn.x+min;
+  }
+}
+
 function collideCircle(p,nx,ny,r){
   p.x=nx;p.y=ny;
   const gx=Math.floor(p.x/CFG.cell),gy=Math.floor(p.y/CFG.cell);
   for(let y=gy-1;y<=gy+1;y++)for(let x=gx-1;x<=gx+1;x++){
     if(!G.grid[y]||G.grid[y][x]!==1)continue;
+    if(isPropCell(x,y))continue;
     const bx=x*CFG.cell,by=y*CFG.cell,b=CFG.cell;
     const cx=clamp(p.x,bx,bx+b),cy=clamp(p.y,by,by+b);
     const dx=p.x-cx,dy=p.y-cy,d=Math.hypot(dx,dy);
     if(d<r&&d>0.001){p.x=cx+dx/d*r;p.y=cy+dy/d*r;}
     else if(d<=0.001){p.y=by-r;}
   }
+  // 共鸣柱与喷泉：可绕行的实体，柱身仍能挡住听声者的声束
+  // 圆柱体用更小的身体半径判定，模型边缘能真正贴上去，而不是隔着一大圈空档。
+  pushOutProps(p,CFG.player.bodyR);
 }
 
 function tryMove(dt,mvx,mvy){
   const p=G.p;const mag=Math.hypot(mvx,mvy);
   if(mag>0.05){
-    const inWater=G.pools&&G.pools.some(pool=>p.x>=pool.x&&p.x<=pool.x+pool.w&&p.y>=pool.y&&p.y<=pool.y+pool.h);
-    let spd=p.speed*(p.items.shoes?1.14:1)*(inWater?0.86:1.0);
+    let spd=p.speed*(p.items.shoes?1.14:1);
     if(G.hero.id==="chantress"&&isMuted())spd*=1.4;
     collideCircle(p,p.x+mvx/mag*spd*dt,p.y+mvy/mag*spd*dt,CFG.player.r);
     p.face=Math.atan2(mvy,mvx);
     if(!isMuted()){
       p.stepT-=dt;
       if(p.stepT<=0){
-        p.stepT=inWater?CFG.actions.step.cd*1.15:CFG.actions.step.cd;
+        p.stepT=CFG.actions.step.cd;
         let stepR=CFG.actions.step.r;
         if(G.hero.id==="blade")stepR*=0.8;
         if(G.hero.id==="scout")stepR=46;
-        if(inWater){
-          addWave(p.x,p.y,stepR*1.3,0.65,"#38bdf8","waterStep",{blocked:true});
-          Audio2.play("waterSplash",p.x,p.y);
-          for(let i=0;i<4;i++)spawnSpark(p.x,p.y,"#7dd3fc",rand(20,60));
-        }else{
-          addWave(p.x,p.y,stepR,CFG.actions.step.I,G.hero.color,"step",{blocked:true});
-          Audio2.play("step",p.x,p.y);
-        }
+        addWave(p.x,p.y,stepR,CFG.actions.step.I,G.hero.color,"step",{blocked:true});
+        Audio2.play("step",p.x,p.y);
         player.moving=true;
       }
     }
   }
+}
+
+function doDash(){
+  const p=G.p;
+  if(G.over||p.dashCd>0)return;
+  let ax=0,ay=0;
+  if(keys.w||keys.arrowup){ax+=CAM_FX;ay+=CAM_FZ;}
+  if(keys.s||keys.arrowdown){ax-=CAM_FX;ay-=CAM_FZ;}
+  if(keys.d||keys.arrowright){ax+=CAM_RX;ay+=CAM_RZ;}
+  if(keys.a||keys.arrowleft){ax-=CAM_RX;ay-=CAM_RZ;}
+  if(stickVec.x||stickVec.y){ax=CAM_FX*-stickVec.y+CAM_RX*stickVec.x;ay=CAM_FZ*-stickVec.y+CAM_RZ*stickVec.x;}
+  const mag=Math.hypot(ax,ay)||1;
+  p.dashCd=CFG.player.dash.cd;
+  p.dashT=CFG.player.dash.dur;
+  p.dashVx=ax/mag;p.dashVy=ay/mag;
+  p.iframes=Math.max(p.iframes,CFG.player.dash.iframes);
+  p.face=Math.atan2(ay,ax);
+  // 翻滚是无声的：不产生任何脚步声波，只留下碎光拖尾
+  for(let i=0;i<7;i++)spawnSpark(p.x,p.y,COL.echo,rand(18,50));
+  Audio2.play("dash",p.x,p.y);
 }
 
 function doStomp(){
@@ -947,10 +1157,11 @@ function breakPot(pot){
   addWave(pot.x,pot.y,72,0.45,COL.amber,"potEcho");
   if(pot.grp){world.remove(pot.grp);pot.grp=null;}
   if(Math.random()<0.45){
-    G.p.stones=Math.min(G.p.stones+1,8);
+    G.p.stones=Math.min(G.p.stones+1,CFG.core.maxStone);
     toast("拾得遗留音石 +1");
     updateHud();
   }
+  if(Math.random()<0.22)spawnCore(pot.x,pot.y,false);
 }
 
 function ringPillar(pl){
@@ -1016,11 +1227,13 @@ function moveFoe(f,nx,ny,radius){
   const gx=Math.floor(f.x/CFG.cell),gy=Math.floor(f.y/CFG.cell);
   for(let y=gy-1;y<=gy+1;y++)for(let x=gx-1;x<=gx+1;x++){
     if(!G.grid[y]||G.grid[y][x]!==1)continue;
+    if(isPropCell(x,y))continue;
     const bx=x*CFG.cell,by=y*CFG.cell,b=CFG.cell;
     const cx=clamp(f.x,bx,bx+b),cy=clamp(f.y,by,by+b);
     const dx=f.x-cx,dy=f.y-cy,d=Math.hypot(dx,dy);
     if(d<r&&d>0.001){f.x=cx+dx/d*r;f.y=cy+dy/d*r;}
   }
+  pushOutProps(f,r);
 }
 
 /* ===================== 敌人 AI 进阶 ===================== */
@@ -1035,7 +1248,7 @@ function hearWave(f,w){
     f._heard.add(w);
     let loud=w.I*(1-d/w.maxR);
     if(w.blocked&&lineBlocked(w.x,w.y,f.x,f.y))loud*=0.15;
-    const thresh=f.type==="husher"?CFG.hear.husher:CFG.hear.wanderer;
+    const thresh=f.type==="husher"?CFG.hear.husher:(f.elite?CFG.hear.elite:CFG.hear.wanderer);
     if(f.type==="howler")return;
     if(loud>=thresh){
       if(f.type==="wanderer"){
@@ -1062,20 +1275,6 @@ function updateFoes(dt){
     f.glow=Math.max(0,f.glow-dt*0.9);f.seen=Math.max(0,f.seen-dt);
     f.blinkCd=Math.max(0,f.blinkCd-dt);
     const c=CFG.foes[f.type];
-
-    // 怪物涉水产生水花涟漪与声响，暴露其潜行位置
-    if(f.type!=="howler"&&G.pools&&G.pools.length){
-      const foeInWater=G.pools.some(pool=>f.x>=pool.x&&f.x<=pool.x+pool.w&&f.y>=pool.y&&f.y<=pool.y+pool.h);
-      if(foeInWater){
-        f._wSplash=(f._wSplash||0)-dt;
-        if(f._wSplash<=0){
-          f._wSplash=0.46;
-          addWave(f.x,f.y,95,0.4,"#38bdf8","foeSplash",{blocked:true});
-          Audio2.play("waterSplash",f.x,f.y);
-          for(let i=0;i<3;i++)spawnSpark(f.x,f.y,"#7dd3fc",rand(15,45));
-        }
-      }
-    }
 
     if(f.type==="howler"){
       f.howlT-=dt;
@@ -1140,16 +1339,67 @@ function updateFoes(dt){
   dead.forEach(f=>{
     G.stats.kills++;
     p.killCount=(p.killCount||0)+1;
+    // 连杀共鸣：短时间内连续击杀累积层数，层数越高精粹越多
+    p.combo=(p.combo||0)+1;p.comboT=CFG.combo.window;
+    if(p.combo>=3&&p.combo%3===0){
+      toast("共鸣连杀 ×"+p.combo+" · 声骸精粹 +1");
+      spawnCore(f.x,f.y,true);
+      Audio2.tone("upgrade",0,0);
+    }
     if(G.hero.id==="chantress"&&p.killCount%3===0){
       p.hp=Math.min(p.hp+1,p.maxHp);
       toast("回声汲取 · 愈合 1 点生命");
       updateHud();
     }
+    spawnCore(f.x,f.y,f.elite);
     for(let i=0;i<14;i++)spawnSpark(f.x,f.y,f.type==="husher"?COL.shade:COL.foe,rand(25,75));
     addWave(f.x,f.y,70,0.4,f.type==="husher"?COL.shade:COL.foe,"foeDie",{blocked:true});
     if(f.grp)scene3.remove(f.grp);
+    updateHud();
   });
   G.foes=G.foes.filter(f=>f.hp>0);
+}
+
+/* ===================== 声骸精粹：击杀掉落，靠近自动吸附 ===================== */
+function spawnCore(x,y,elite){
+  const mat2=new THREE.MeshBasicMaterial({color:elite?0xffd24d:0x9ef0ff,transparent:true,opacity:0.95});
+  const mesh=new THREE.Mesh(new THREE.OctahedronGeometry(elite?0.14:0.1,0),mat2);
+  mesh.position.set(wx(x)+rand(-0.6,0.6),0.6,wz(y)+rand(-0.6,0.6));
+  world.add(mesh);
+  G.cores.push({x:x+rand(-8,8),y:y+rand(-8,8),t:0,m:mesh,elite:!!elite});
+}
+
+function updateCores(dt){
+  const p=G.p,keep=[];
+  for(const c of G.cores){
+    c.t+=dt;
+    const d=dist(c.x,c.y,p.x,p.y);
+    if(d<CFG.core.magnet){
+      const a=Math.atan2(p.y-c.y,p.x-c.x),pull=(1-d/CFG.core.magnet)*240;
+      c.x+=Math.cos(a)*pull*dt;c.y+=Math.sin(a)*pull*dt;
+    }
+    if(c.m){c.m.position.set(wx(c.x),0.6+Math.sin(c.t*3.4)*0.12,wz(c.y));c.m.rotation.y+=dt*2.2;}
+    if(d<CFG.core.collect){collectCore(c);continue;}
+    if(c.t>CFG.core.life){if(c.m)world.remove(c.m);continue;}
+    keep.push(c);
+  }
+  G.cores=keep;
+}
+
+function collectCore(c){
+  const p=G.p;
+  if(c.m){world.remove(c.m);c.m=null;}
+  Audio2.tone("pickup",0,0);
+  for(let i=0;i<5;i++)spawnSpark(c.x,c.y,COL.echo,rand(12,34));
+  p.cores=(p.cores||0)+1;
+  p.stones=Math.min(p.stones+1,CFG.core.maxStone);
+  let msg="声骸精粹 · 音石 +1";
+  if(p.cores%CFG.core.perHp===0){
+    p.maxHp++;p.hp=Math.min(p.hp+1,p.maxHp);
+    msg="声骸共鸣 · 生命上限 +1";
+    toast(msg);shake=6;
+  }else toast(msg);
+  updateHud();
 }
 
 function steerFoe(f,speed,dt){
@@ -1197,7 +1447,17 @@ function updateDoor(dt){
       d.pulseT=0.5;addWave(d.x,d.y,CFG.actions.door.r,CFG.actions.door.I,COL.gold,"doorRing");
       Audio2.play("bell",d.x,d.y);
     }
-    if(d.t<=0){d.state="open";toast("鸣 门 洞 开 · 步 入 辉 金 圣 环");}
+    if(d.t<=0){
+      d.state="open";
+      toast("鸣 门 洞 开 · 步 入 辉 金 圣 环");
+      // 楼层评级：用时与受创决定 S/A/B/C，给出可追逐的目标
+      if(G.fl){
+        const sec=G.fl.t,hits=G.fl.hurt;
+        const rank=(hits===0&&sec<100)?"S":(hits<=1&&sec<170)?"A":(hits<=3&&sec<260)?"B":"C";
+        G.stats.ranks=G.stats.ranks||[];G.stats.ranks.push(rank);
+        setTimeout(()=>toast("本层评级 <b>"+rank+"</b> · 用时 "+sec.toFixed(1)+"s · 受创 "+hits),900);
+      }
+    }
   }
 
   if(d.state==="open"&&dist(G.p.x,G.p.y,d.x,d.y)<34&&!G.isTransitioning){
@@ -1249,9 +1509,16 @@ function updateBoss(dt){
     if(d<CFG.boss.beamLen){
       const da=Math.atan2(G.p.y-b.y,G.p.x-b.x);
       const diff=Math.abs(Math.atan2(Math.sin(da-b.angle),Math.cos(da-b.angle)));
-      if(diff<CFG.boss.halfDeg*Math.PI/180)hurtPlayer("boss",b.angle);
+      if(diff<CFG.boss.halfDeg*Math.PI/180&&!beamBlockedByPillar(b.x,b.y,G.p.x,G.p.y))hurtPlayer("boss",b.angle);
     }
-    if(b.phaseT<=0){b.phase="back";b.phaseT=CFG.boss.backWindow;}
+    if(b.phaseT<=0){
+      b.phase="back";b.phaseT=CFG.boss.backWindow;
+      // 弱点窗口：背后短暂露出破绽，给出明确的进攻提示
+      b._backN=(b._backN||0)+1;
+      addWave(b.x,b.y,130,0.7,COL.gold,"bossBack");
+      Audio2.play("beamWarn",b.x,b.y);
+      if(b._backN<=3)toast("弱 点 暴 露 · 绕 至 背 后 斩 击");
+    }
   }else if(b.phase==="back"){
     if(b.phaseT<=0){const stage=3-b.hp;b.phase="listen";b.phaseT=CFG.boss.periods[clamp(stage,0,2)];}
   }
@@ -1277,6 +1544,7 @@ function strikeBoss(ang){
       buildDoor();
       toast("世 间 万 籁 重 归 寂 然");
     }else{
+      toast("弱点斩击命中 · 谐振层数剩 "+b.hp);
       b.phase="listen";b.phaseT=CFG.boss.periods[clamp(3-b.hp,0,2)];
     }
   }
@@ -1288,6 +1556,8 @@ function hurtPlayer(cause,ang){
   if(debugGod||G.over||p.iframes>0)return;
   let dmg=cause==="husher"?2:1;
   p.hp-=dmg;p.iframes=CFG.player.iframes;G.stats.hurt+=dmg;
+  if(G.fl)G.fl.hurt+=dmg;
+  p.combo=0;p.comboT=0;
   redFlash=1;shake=12;Audio2.play("hurt",p.x,p.y);
   // 删除敌人击退玩家属性：玩家受创但身形稳定，不再被敌人物理位移击退
   if(p.items.charm&&!p.charmUsed){p.charmUsed=true;addWave(p.x,p.y,200,1.0,COL.echo,"charm");}
@@ -1343,9 +1613,13 @@ function choose(u){
 function update(dt){
   if(state!==St.PLAY)return;
   G.t+=dt;G.stats.time+=dt;const p=G.p;
+  if(G.fl)G.fl.t+=dt;
   p.stompCd=Math.max(0,p.stompCd-dt);p.strikeCd=Math.max(0,p.strikeCd-dt);
   p.bellT=Math.max(0,p.bellT-dt);p.bellCd=Math.max(0,p.bellCd-dt);
   p.iframes=Math.max(0,p.iframes-dt);
+  p.dashCd=Math.max(0,p.dashCd-dt);
+  p.comboT=Math.max(0,(p.comboT||0)-dt);
+  if(p.comboT<=0&&p.combo){p.combo=0;updateHud();}
   G.fields.clear();
 
   let mvx=0,mvy=0;
@@ -1355,7 +1629,15 @@ function update(dt){
   if(keys.a||keys.arrowleft){mvx-=CAM_RX;mvy-=CAM_RZ;}
   if(stickVec.x||stickVec.y){mvx=CAM_FX*-stickVec.y+CAM_RX*stickVec.x;mvy=CAM_FZ*-stickVec.y+CAM_RZ*stickVec.x;}
   player.moving=Math.hypot(mvx,mvy)>0.05;
-  if(!G.over)tryMove(dt,mvx,mvy);
+  if(!G.over){
+    if(p.dashT>0){
+      p.dashT-=dt;
+      const spd=p.speed*CFG.player.dash.mult;
+      collideCircle(p,p.x+p.dashVx*spd*dt,p.y+p.dashVy*spd*dt,CFG.player.r);
+      if(Math.random()<0.4)spawnSpark(p.x,p.y,COL.echo,rand(10,30));
+      player.moving=false;
+    }else tryMove(dt,mvx,mvy);
+  }
 
   for(const s of G.stonesFly){
     s.t+=dt;
@@ -1417,11 +1699,20 @@ function update(dt){
   const decayRate=G.floor===2?0.42:0.34;
   for(let y=0;y<CFG.mapH;y++)for(let x=0;x<CFG.mapW;x++)
     if(G.glow[y][x]>0)G.glow[y][x]=Math.max(0,G.glow[y][x]-dt*decayRate);
+  // 声纳记忆：探索过的地形留下极淡的轮廓，作为小地图的永久底图
+  if(G.mini){
+    for(let y=0;y<CFG.mapH;y++)for(let x=0;x<CFG.mapW;x++){
+      const gv=G.glow[y][x],mv=G.mini[y][x];
+      if(gv>mv)G.mini[y][x]=gv;
+      else if(mv>0.16)G.mini[y][x]=Math.max(0.16,mv-dt*0.06);
+    }
+  }
   G.waves=G.waves.filter(w=>G.t-w.born<w.life);
 
   updateFoes(dt);
   if(G.floor===3)updateBoss(dt);
   updateDoor(dt);
+  updateCores(dt);
 
   for(const f of G.foes){
     if(f.type==="howler")continue;
@@ -1443,11 +1734,25 @@ function update(dt){
   shake=Math.max(0,shake-dt*30);redFlash=Math.max(0,redFlash-dt*1.6);
 
   G._nearDoor=G.door&&G.door.state==="sealed"&&dist(p.x,p.y,G.door.x,G.door.y)<50;
-  G._nearChest=G.chests&&G.chests.find(c=>!c.opened&&dist(p.x,p.y,c.x,c.y)<46);
+  G._nearChest=G.chests&&G.chests.find(c=>!c.opened&&(!c.secret||(G.secret&&G.secret.revealed))&&dist(p.x,p.y,c.x,c.y)<46);
+  G._nearNpc=G.npcs&&G.npcs.find(n=>dist(p.x,p.y,n.x,n.y)<50);
   const dh=document.getElementById("doorHud");
   if(G.door&&G.door.state==="ringing"){dh.style.opacity=1;document.getElementById("doorT").textContent=G.door.t.toFixed(1);}
   else dh.style.opacity=0;
+  // 声波扫到隐秘石室的门格，石壁裂纹显现并崩开
+  if(G.secret&&!G.secret.revealed){
+    const sx=G.secret.door.x*CFG.cell+16,sy=G.secret.door.y*CFG.cell+16;
+    if(G.secretCrack){
+      const near=dist(p.x,p.y,sx,sy);
+      G.secretCrack.visible=near<170;
+      G.secretCrack.material.opacity=clamp(1-near/170,0.06,0.4);
+    }
+    for(const w of G.waves){
+      if(dist(w.x,w.y,sx,sy)<=waveAt(w)+3){revealSecret();break;}
+    }
+  }
   if(G._nearChest)setMsg("发现古代回声宝箱 · 按 <b>E</b> 开启");
+  else if(G._nearNpc)setMsg("织音者静立于此 · 按 <b>E</b> 低语");
   else if(G._nearDoor)setMsg("贴近鸣门 · 按 <b>E</b> 敲响鸣钟");
   updateHud();
 }
@@ -1476,7 +1781,7 @@ scene3.add(dirLight);
 const world=new THREE.Group();scene3.add(world);
 const actorGroup=new THREE.Group();scene3.add(actorGroup);
 
-const CAM={back:1.2,height:12,lookAhead:0.6,lookY:0};
+const CAM={back:4.1,height:9.2,lookAhead:0.65,lookY:0.15};
 const CAM_FA=-Math.PI/2, CAM_FX=Math.cos(CAM_FA), CAM_FZ=Math.sin(CAM_FA);
 const CAM_RX=1, CAM_RZ=0;
 
@@ -1529,22 +1834,75 @@ addEventListener("resize",()=>{
   const rs=renderSize();lowRT.setSize(rs.w,rs.h);
 });
 
-/* 像素石砖纹理生成 */
-function createDetailedStoneTex(baseColor,gridX,gridY){
+/* 逐层主题化的像素石材纹理（保持同一暗调风格，仅更换地表肌理与石质） */
+const TEXSTYLE={
+  0:{wall:"#7a8ca3",gx:4,gy:4,floor:"#5d6f85",fgx:2,fgy:2,cap:0x29435c},
+  1:{wall:"#59766a",gx:5,gy:3,floor:"#43675a",fgx:3,fgy:3,cap:0x1c3a2f},
+  2:{wall:"#6a5c84",gx:5,gy:5,floor:"#54406b",fgx:4,fgy:4,cap:0x2b1f3a},
+  3:{wall:"#8a7952",gx:3,gy:3,floor:"#6a5636",fgx:2,fgy:2,cap:0x3a2c12},
+};
+
+function createDetailedStoneTex(baseColor,gridX,gridY,style=0){
   const cv=document.createElement("canvas");cv.width=64;cv.height=64;
   const ctx=cv.getContext("2d");
-  ctx.fillStyle=baseColor;ctx.fillRect(0,0,64,64);
+  const bw=64/gridX,bh=64/gridY;
 
-  const stepX=64/gridX, stepY=64/gridY;
-  ctx.fillStyle="rgba(0,0,0,0.35)";
-  for(let x=0;x<=64;x+=stepX)ctx.fillRect(x-1,0,2,64);
-  for(let y=0;y<=64;y+=stepY)ctx.fillRect(0,y-1,64,2);
+  // 深色灰浆打底，错缝石砖逐块绘制；保留硬边像素肌理，不做写实木纹化。
+  ctx.fillStyle=style===3?"#292317":"#111923";ctx.fillRect(0,0,64,64);
+  for(let row=0;row<gridY;row++){
+    const offset=(row%2)*bw*0.5;
+    for(let col=-1;col<=gridX;col++){
+      const x=Math.round(col*bw+offset),y=Math.round(row*bh);
+      ctx.fillStyle=baseColor;
+      ctx.fillRect(x+1,y+1,Math.ceil(bw)-2,Math.ceil(bh)-2);
+      // 石砖上缘受光、下缘积暗，配合缺口形成清晰的砖块厚度。
+      ctx.fillStyle="rgba(255,255,255,.13)";ctx.fillRect(x+2,y+1,Math.ceil(bw)-4,1);
+      ctx.fillStyle="rgba(255,255,255,.06)";ctx.fillRect(x+1,y+2,1,Math.ceil(bh)-4);
+      ctx.fillStyle="rgba(0,0,0,.24)";ctx.fillRect(x+2,y+Math.ceil(bh)-2,Math.ceil(bw)-3,1);
+      ctx.fillRect(x+Math.ceil(bw)-2,y+2,1,Math.ceil(bh)-3);
+      if((row*7+col*11+style)%4===0){
+        ctx.fillStyle="rgba(0,0,0,.32)";
+        ctx.fillRect(x+2,y+2,randi(2,5),1);ctx.fillRect(x+2,y+3,1,randi(1,3));
+      }
+    }
+  }
 
-  for(let i=0;i<120;i++){
-    const nx=Math.random()*64,ny=Math.random()*64;
-    const lum=Math.random()*0.15;
-    ctx.fillStyle=Math.random()<0.5?`rgba(255,255,255,${lum})`:`rgba(0,0,0,${lum*1.5})`;
-    ctx.fillRect(nx,ny,rand(1,2),rand(1,2));
+  // 细颗粒、矿斑和旧裂纹，控制在低对比度范围内避免破坏声纳显影。
+  for(let i=0;i<170;i++){
+    const nx=randi(0,63),ny=randi(0,63),lum=rand(0.025,0.13);
+    ctx.fillStyle=Math.random()<0.46?`rgba(255,255,255,${lum})`:`rgba(0,0,0,${lum*1.7})`;
+    ctx.fillRect(nx,ny,Math.random()<0.82?1:2,1);
+  }
+  ctx.lineCap="square";
+  for(let i=0;i<4;i++){
+    let x=rand(3,61),y=rand(2,48);
+    ctx.strokeStyle=`rgba(3,8,13,${rand(0.2,0.42)})`;ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(x,y);
+    for(let k=0;k<3;k++){x+=rand(-6,6);y+=rand(3,8);ctx.lineTo(x,y);}
+    ctx.stroke();
+  }
+
+  if(style===1){
+    // 溶洞：苔痕只附着在砖缝与下缘，保留潮湿岩洞的方向性。
+    for(let i=0;i<30;i++){
+      ctx.fillStyle=`rgba(52,138,91,${rand(0.05,0.17)})`;
+      ctx.beginPath();ctx.arc(rand(0,64),rand(0,64),rand(1,5),0,TAU);ctx.fill();
+    }
+    ctx.fillStyle="rgba(80,190,135,.12)";
+    for(let i=0;i<12;i++)ctx.fillRect(rand(0,64),rand(40,63),rand(2,7),1);
+  }else if(style===2){
+    // 神庙：小型刻印与磨损的斜向凿痕。
+    ctx.strokeStyle="rgba(183,133,255,.22)";ctx.lineWidth=1;
+    for(let i=0;i<7;i++){
+      const x=randi(5,57),y=randi(5,57);
+      ctx.strokeRect(x-2,y-2,4,4);ctx.beginPath();ctx.moveTo(x-3,y);ctx.lineTo(x+3,y);ctx.stroke();
+    }
+  }else if(style===3){
+    // 圣殿：克制的暗金嵌线，而非整面发光。
+    ctx.strokeStyle="rgba(255,210,77,.2)";
+    for(let i=0;i<3;i++){
+      const y=randi(8,56);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(18,y);ctx.lineTo(23,y+4);ctx.lineTo(64,y+4);ctx.stroke();
+    }
   }
 
   const tex=new THREE.CanvasTexture(cv);
@@ -1554,11 +1912,64 @@ function createDetailedStoneTex(baseColor,gridX,gridY){
   return tex;
 }
 
-const wallTex=createDetailedStoneTex("#7a8ca3",4,4);
-const floorTex=createDetailedStoneTex("#5d6f85",2,2);
-const wallMat=new THREE.MeshLambertMaterial({map:wallTex});
-const floorMat=new THREE.MeshLambertMaterial({map:floorTex});
-const capMat=new THREE.MeshLambertMaterial({color:0x29435c});
+function createPillarTex(style,accent){
+  const cv=document.createElement("canvas");cv.width=64;cv.height=128;
+  const c=cv.getContext("2d"),conf=TEXSTYLE[style]||TEXSTYLE[0];
+  c.fillStyle=conf.wall;c.fillRect(0,0,64,128);
+  // 纵向凿槽、横向石接缝与局部崩角共同形成柱身肌理。
+  for(let x=0;x<64;x+=8){
+    c.fillStyle="rgba(0,0,0,.24)";c.fillRect(x,0,2,128);
+    c.fillStyle="rgba(255,255,255,.09)";c.fillRect(x+2,0,1,128);
+  }
+  for(let y=0;y<128;y+=24){
+    c.fillStyle="rgba(0,0,0,.36)";c.fillRect(0,y,64,2);
+    c.fillStyle="rgba(255,255,255,.08)";c.fillRect(0,y+2,64,1);
+  }
+  for(let i=0;i<180;i++){
+    c.fillStyle=Math.random()<0.5?"rgba(255,255,255,.07)":"rgba(0,0,0,.12)";
+    c.fillRect(randi(0,63),randi(0,127),randi(1,2),1);
+  }
+  const ac=new THREE.Color(accent);
+  c.strokeStyle=`rgba(${Math.round(ac.r*255)},${Math.round(ac.g*255)},${Math.round(ac.b*255)},.38)`;
+  c.lineWidth=1;
+  for(let i=0;i<5;i++){
+    const x=12+i*10,y=48+(i%2)*9;
+    c.beginPath();c.moveTo(x,y-7);c.lineTo(x+3,y);c.lineTo(x,y+7);c.lineTo(x-3,y);c.closePath();c.stroke();
+    c.beginPath();c.moveTo(x-4,y);c.lineTo(x+4,y);c.stroke();
+  }
+  const tex=new THREE.CanvasTexture(cv);
+  tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
+  tex.magFilter=THREE.NearestFilter;tex.minFilter=THREE.NearestFilter;tex.generateMipmaps=false;
+  return tex;
+}
+
+function createClothTex(){
+  const cv=document.createElement("canvas");cv.width=cv.height=32;
+  const c=cv.getContext("2d");c.fillStyle="#a8b0b8";c.fillRect(0,0,32,32);
+  for(let i=0;i<32;i+=2){
+    c.fillStyle="rgba(255,255,255,.09)";c.fillRect(i,0,1,32);
+    c.fillStyle="rgba(0,0,0,.1)";c.fillRect(0,i,32,1);
+  }
+  for(let i=0;i<45;i++){c.fillStyle="rgba(0,0,0,.09)";c.fillRect(randi(0,31),randi(0,31),1,1);}
+  const tex=new THREE.CanvasTexture(cv);tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
+  tex.repeat.set(2,3);tex.magFilter=THREE.NearestFilter;tex.minFilter=THREE.NearestFilter;tex.generateMipmaps=false;
+  return tex;
+}
+const clothTex=createClothTex();
+
+const _matCache={};
+function getFloorMats(style){
+  if(_matCache[style])return _matCache[style];
+  const conf=TEXSTYLE[style]||TEXSTYLE[0];
+  const wt=createDetailedStoneTex(conf.wall,conf.gx,conf.gy,style);
+  const ft=createDetailedStoneTex(conf.floor,conf.fgx,conf.fgy,style);
+  _matCache[style]={
+    wallMat:new THREE.MeshLambertMaterial({map:wt}),
+    floorMat:new THREE.MeshLambertMaterial({map:ft}),
+    capMat:new THREE.MeshLambertMaterial({color:conf.cap})
+  };
+  return _matCache[style];
+}
 
 let wallInst=null,floorInst=null,capInst=null,wallId=[],floorId=[];
 const WALL_H=4.2;
@@ -1586,29 +1997,39 @@ function buildWorld(d){
   while(world.children.length)world.remove(world.children[0]);
   waveMeshes.forEach(m=>{if(m.grp)world.remove(m.grp);});
   waveMeshes.length=0;
-  sparkPool.forEach(s=>{s.m.visible=false;s.active=false;});
-  if(G.chests)G.chests.forEach(c=>{if(c.grp)world.remove(c.grp);});
-  if(G.pools)G.pools.forEach(p=>{if(p._mesh)world.remove(p._mesh);});
+  // 火花池材质挂在 world 下，重建世界后必须重新挂回，否则粒子会隐形
+  sparkPool.forEach(s=>{s.m.visible=false;s.active=false;world.add(s.m);});
+  decorSets.length=0;roomSigils.length=0;arenaRings.length=0;
 
   const flConfig=CFG.floors[G.floor]||CFG.floors[0];
   _wallLit.set(flConfig.wallCol||0x1b7296);
   _floorLit.set(flConfig.floorCol||0x0f4a62);
+  const mats=getFloorMats(G.floor);
 
   const g=d.grid;
+  const pillarCells=new Set((G.pillars||[]).map(p=>Math.floor(p.x/CFG.cell)+","+Math.floor(p.y/CFG.cell)));
+  // 立柱与喷泉都占着碰撞格，但视觉上是独立模型，不能和整面墙体重叠。
+  const solidCells=new Set(pillarCells);
+  for(const fn of (G.fountains||[]))if(fn.cx!==undefined)solidCells.add(fn.cx+","+fn.cy);
   const wallCells=[],floorCells=[];
   for(let y=0;y<CFG.mapH;y++)for(let x=0;x<CFG.mapW;x++){
     if(g[y][x]===0){floorCells.push([x,y]);
       for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){
         const nx=x+dx,ny=y+dy;
-        if(!g[ny]||g[ny][nx]===1)wallCells.push([nx,ny]);
+        if((!g[ny]||g[ny][nx]===1)&&!solidCells.has(nx+","+ny))wallCells.push([nx,ny]);
       }
     }
+  }
+  // 这些格子仍算实心阻挡，只是改由独立模型呈现。
+  for(const key of solidCells){
+    const[x,y]=key.split(",").map(Number);
+    if(g[y]&&g[y][x]===1)floorCells.push([x,y]);
   }
   const uniqWall=[...new Set(wallCells.map(c=>c.join(",")))].map(s=>s.split(",").map(Number));
 
   // 地板
   const fgeo=new THREE.PlaneGeometry(4,4);
-  floorInst=new THREE.InstancedMesh(fgeo,floorMat,floorCells.length);
+  floorInst=new THREE.InstancedMesh(fgeo,mats.floorMat,floorCells.length);
   floorId=Array.from({length:CFG.mapH},()=>Array(CFG.mapW).fill(-1));
   const m4=new THREE.Matrix4();let fi=0;
   for(const[x,y]of floorCells){
@@ -1620,9 +2041,9 @@ function buildWorld(d){
   }
   floorInst.instanceColor.needsUpdate=true;floorInst.frustumCulled=false;world.add(floorInst);
 
-  // 碎石
-  const rubbleN=Math.min(180,floorCells.length);
-  const rubInst=new THREE.InstancedMesh(new THREE.DodecahedronGeometry(0.18,1),
+  // 少量碎石点缀：保留地牢质感，但不在行走区域铺满杂物。
+  const rubbleN=Math.min(32,Math.floor(floorCells.length*0.07));
+  const rubInst=new THREE.InstancedMesh(new THREE.DodecahedronGeometry(0.14,0),
     new THREE.MeshStandardMaterial({color:0x08121e,roughness:0.9}),rubbleN);
   const qR=new THREE.Quaternion(),eR=new THREE.Euler(),mR=new THREE.Matrix4(),sR=new THREE.Vector3();
   for(let i=0;i<rubbleN;i++){
@@ -1634,20 +2055,20 @@ function buildWorld(d){
   }
   rubInst.frustumCulled=false;world.add(rubInst);
 
-  // 墙
+  // 墙体使用统一高度和宽度，相邻墙格组成连续、竖直、平整的立面。
+  // 砖纹只存在于贴图中，不再用凸出的几何块破坏墙面。
   const wgeo=new THREE.BoxGeometry(4,WALL_H,4);
-  wallInst=new THREE.InstancedMesh(wgeo,wallMat,uniqWall.length);
-  capInst=new THREE.InstancedMesh(new THREE.BoxGeometry(4.2,0.35,4.2),capMat,uniqWall.length);
+  wallInst=new THREE.InstancedMesh(wgeo,mats.wallMat,uniqWall.length);
+  capInst=new THREE.InstancedMesh(new THREE.BoxGeometry(4,0.18,4),mats.capMat,uniqWall.length);
   wallId=Array.from({length:CFG.mapH},()=>Array(CFG.mapW).fill(-1));
   const q=new THREE.Quaternion(),sc=new THREE.Vector3(1,1,1);
   const capM=new THREE.Matrix4();
   let wi=0;
   for(const[x,y]of uniqWall){
-    const h=1+( (x*7+y*13)%5)*0.04;
-    m4.compose(new THREE.Vector3(wx(x*CFG.cell+16),WALL_H*h/2-0.05,wz(y*CFG.cell+16)),q,sc.clone().set(1,h,1));
+    m4.compose(new THREE.Vector3(wx(x*CFG.cell+16),WALL_H/2,wz(y*CFG.cell+16)),q,sc);
     wallInst.setMatrixAt(wi,m4);
     wallInst.setColorAt(wi,_dark.clone());
-    capM.compose(new THREE.Vector3(wx(x*CFG.cell+16),WALL_H*h-0.05+0.12,wz(y*CFG.cell+16)),q,sc.clone());
+    capM.compose(new THREE.Vector3(wx(x*CFG.cell+16),WALL_H+0.09,wz(y*CFG.cell+16)),q,sc);
     capInst.setMatrixAt(wi,capM);
     capInst.setColorAt(wi,_dark.clone());
     wallId[y][x]=wi;wi++;
@@ -1655,8 +2076,24 @@ function buildWorld(d){
   wallInst.instanceColor.needsUpdate=true;wallInst.frustumCulled=false;world.add(wallInst);
   capInst.instanceColor.needsUpdate=true;capInst.frustumCulled=false;world.add(capInst);
 
-  // 浮尘
-  const dustN=260,dpos=new Float32Array(dustN*3);
+  // 墙基与墙面齐平，不再形成每格向外凸出的方块。
+  {
+    const plinthMat=new THREE.MeshStandardMaterial({color:0xffffff,emissive:0x09131d,emissiveIntensity:0.4,roughness:0.86,metalness:0.14});
+    const plinthInst=new THREE.InstancedMesh(new THREE.BoxGeometry(4,0.32,4),plinthMat,uniqWall.length);
+    const plinthItems=[];
+    let pi=0;
+    for(const[x,y]of uniqWall){
+      m4.compose(new THREE.Vector3(wx(x*CFG.cell+16),0.16,wz(y*CFG.cell+16)),q,sc);
+      plinthInst.setMatrixAt(pi,m4);
+      plinthInst.setColorAt(pi,_dark);
+      plinthItems.push({gx:x,gy:y});pi++;
+    }
+    plinthInst.instanceColor.needsUpdate=true;plinthInst.frustumCulled=false;world.add(plinthInst);
+    decorSets.push({mesh:plinthInst,items:plinthItems,lit:new THREE.Color(flConfig.wallCol||0x1b7296),dark:_dark.clone(),gain:0.95});
+  }
+
+  // 极少量浮尘，避免暗场中出现过多杂点。
+  const dustN=80,dpos=new Float32Array(dustN*3);
   for(let i=0;i<dustN;i++){
     dpos[i*3]=wx(rand(0,CFG.mapW*CFG.cell));
     dpos[i*3+1]=rand(0.2,3.8);
@@ -1669,31 +2106,403 @@ function buildWorld(d){
   }));
   dust.name="dust";dust.frustumCulled=false;world.add(dust);
 
+  buildDecor(d,floorCells);
+  // 终焉圣殿：给竞技场一层极暗的底光，避免整屏纯黑看不见立柱与地面
+  if(G.floor===3){
+    const amb=new THREE.PointLight(0xffc65c,1.15,26,2);
+    amb.position.set(wx(15*CFG.cell+16),6,wz(10*CFG.cell+16));
+    world.add(amb);
+    const rim=new THREE.PointLight(0x2a6f96,0.5,20,2);
+    rim.position.set(wx(8*CFG.cell+16),3,wz(16*CFG.cell+16));
+    world.add(rim);
+  }
+
   G.foes.forEach(f=>{f.grp=buildFoe(f);world.add(f.grp);});
   G.pots.forEach(p=>{p.grp=buildPot(p);world.add(p.grp);});
+  if(G.npcs)G.npcs.forEach(n=>{n.grp=buildNpc(n);world.add(n.grp);});
+  if(G.secret)buildSecretRune();
   buildDoor();
   buildPillars();
-  buildPools();
+  buildFountains();
   buildChests();
+  buildDecals(floorCells);
   if(G.boss)buildBoss();
   buildAvatar();
+}
+
+/* ===================== 逐层主题化场景装饰 ===================== */
+let decorSets=[],roomSigils=[],arenaRings=[];
+
+function mkDecor(geo,material,items,litHex,darkHex,gain){
+  if(!items.length)return null;
+  const mesh=new THREE.InstancedMesh(geo,material,items.length);
+  mesh.frustumCulled=false;
+  const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),e=new THREE.Euler(),v=new THREE.Vector3(),s=new THREE.Vector3();
+  const c0=new THREE.Color(darkHex);
+  items.forEach((it,i)=>{
+    e.set(it.rx||0,it.ry||0,it.rz||0);q.setFromEuler(e);
+    v.set(it.px,it.py,it.pz);s.set(it.sx||1,it.sy||1,it.sz||1);
+    m4.compose(v,q,s);
+    mesh.setMatrixAt(i,m4);
+    mesh.setColorAt(i,c0);
+  });
+  mesh.instanceColor.needsUpdate=true;world.add(mesh);
+  decorSets.push({mesh,items,lit:new THREE.Color(litHex),dark:new THREE.Color(darkHex),gain});
+  return mesh;
+}
+
+function buildDecor(d,floorCells){
+  const fl=CFG.floors[G.floor]||CFG.floors[0];
+  const accent=fl.wallCol||0x5ce9ff;
+  const dr=CFG.cell;
+  const pillarCells=new Set((G.pillars||[]).map(p=>Math.floor(p.x/CFG.cell)+","+Math.floor(p.y/CFG.cell)));
+  for(const fn of (G.fountains||[]))if(fn.cx!==undefined)pillarCells.add(fn.cx+","+fn.cy);
+
+  // 靠墙的可行走格与朝向（供壁挂、贴墙装饰使用）
+  const near=[],faces=[];
+  for(const[x,y]of floorCells){
+    let adj=false;
+    for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){
+      const nx=x+dx,ny=y+dy;
+      if((!d.grid[ny]||d.grid[ny][nx]===1)&&!pillarCells.has(nx+","+ny)){adj=true;faces.push({x,y,dx,dy});}
+    }
+    if(adj)near.push([x,y]);
+  }
+  const pick=(arr,n)=>{
+    const cp=arr.slice(),out=[];
+    while(out.length<n&&cp.length)out.push(cp.splice(randi(0,cp.length-1),1)[0]);
+    return out;
+  };
+
+  // 墙面保持完全平整，砖缝、磨损和裂纹由石材贴图表现。
+
+  // 少量墙根碎石，不再给每间房都铺一圈塌方堆。
+  const rockItems=pick(near,G.floor>=2?5:10).map(([x,y])=>({
+    gx:x,gy:y,
+    px:wx(x*dr+16)+rand(-1.1,1.1),py:rand(0.1,0.32),pz:wz(y*dr+16)+rand(-1.1,1.1),
+    rx:rand(0,TAU),ry:rand(0,TAU),rz:rand(0,TAU),
+    sx:rand(0.7,1.9),sy:rand(0.3,0.8),sz:rand(0.7,1.9)
+  }));
+  mkDecor(new THREE.DodecahedronGeometry(0.34,0),
+    new THREE.MeshStandardMaterial({color:0xffffff,emissive:0x0b1620,emissiveIntensity:0.45,roughness:0.95,metalness:0.04}),
+    rockItems,_wallLit.getHex(),0x18222e,0.85);
+
+  // 主题一：晶簇（溶洞 / 神庙），竖直生长的高光晶柱
+  if(G.floor===1||G.floor===2){
+    const shardItems=[];
+    for(const[x,y]of pick(near,G.floor===1?8:5)){
+      const px=wx(x*dr+16)+rand(-1.4,1.4),pz=wz(y*dr+16)+rand(-1.4,1.4);
+      for(let k=0,n=randi(1,2);k<n;k++){
+        shardItems.push({gx:x,gy:y,px:px+rand(-0.8,0.8),py:rand(0.1,0.6),pz:pz+rand(-0.8,0.8),
+          rx:rand(-0.5,0.5),ry:rand(0,TAU),rz:rand(-0.5,0.5),
+          sx:rand(0.45,1.0),sy:rand(1.4,3.6),sz:rand(0.45,1.0)});
+      }
+    }
+    mkDecor(new THREE.OctahedronGeometry(0.34,0),
+      new THREE.MeshStandardMaterial({color:0xffffff,emissive:G.floor===1?0x0f3a2a:0x2a1240,
+        emissiveIntensity:0.6,roughness:0.22,metalness:0.4,flatShading:true}),
+      shardItems,accent,_dark.getHex(),1.05);
+  }
+
+  // 主题二：钟乳石柱（溶洞）
+  if(G.floor===1){
+    const coneItems=pick(near,6).map(([x,y])=>{
+      const h=rand(1.0,2.6);
+      return {gx:x,gy:y,px:wx(x*dr+16)+rand(-1.2,1.2),py:h/2,pz:wz(y*dr+16)+rand(-1.2,1.2),
+        rx:0,ry:rand(0,TAU),rz:0,sx:rand(0.7,1.3),sy:h,sz:rand(0.7,1.3)};
+    });
+    mkDecor(new THREE.ConeGeometry(0.26,1,6),
+      new THREE.MeshStandardMaterial({color:0xffffff,emissive:0x123328,emissiveIntensity:0.4,roughness:0.9}),
+      coneItems,0x62dca6,0x142019,0.9);
+  }
+
+  // 主题三：壁挂铁炬（地牢 / 圣殿），贴墙面伸出的铁架与冷金火盆
+  if(G.floor===0||G.floor===3){
+    const postItems=[],bowlItems=[];
+    for(const f of pick(faces,G.floor===0?8:5)){
+      const bx=wx(f.x*dr+16)+f.dx*1.95,bz=wz(f.y*dr+16)+f.dy*1.95;
+      postItems.push({gx:f.x,gy:f.y,px:bx,py:1.15,pz:bz,rx:0,ry:0,rz:0,sx:1,sy:1,sz:1});
+      bowlItems.push({gx:f.x,gy:f.y,px:bx,py:1.9,pz:bz,rx:0,ry:rand(0,TAU),rz:0,sx:1,sy:1,sz:1});
+    }
+    mkDecor(new THREE.CylinderGeometry(0.06,0.09,1.2,6),
+      new THREE.MeshStandardMaterial({color:0xffffff,emissive:0x080f16,emissiveIntensity:0.5,roughness:0.55,metalness:0.7}),
+      postItems,0x4a6f86,0x141d26,0.8);
+    mkDecor(new THREE.CylinderGeometry(0.24,0.12,0.34,8,1,true),
+      new THREE.MeshStandardMaterial({color:0xffffff,emissive:0x2a1e08,emissiveIntensity:0.6,roughness:0.5,metalness:0.8,side:THREE.DoubleSide}),
+      bowlItems,accent,0x16120a,1.1);
+  }
+
+  // 主题四：断柱与悬浮符文石（神庙 / 圣殿）
+  if(G.floor===2||G.floor===3){
+    const colItems=pick(near,G.floor===3?4:2).map(([x,y])=>{
+      const h=rand(0.5,1.15);
+      return {gx:x,gy:y,px:wx(x*dr+16)+rand(-0.7,0.7),py:2.2*h,pz:wz(y*dr+16)+rand(-0.7,0.7),
+        rx:rand(-0.06,0.06),ry:rand(0,TAU),rz:rand(-0.06,0.06),
+        sx:rand(0.8,1.2),sy:h,sz:rand(0.8,1.2)};
+    });
+    mkDecor(new THREE.CylinderGeometry(0.32,0.42,4.4,8,1),
+      new THREE.MeshStandardMaterial({color:0xffffff,emissive:0x0c1420,emissiveIntensity:0.4,roughness:0.85}),
+      colItems,accent,0x1a1a26,0.95);
+
+    const glyphItems=pick(near,4).map(([x,y])=>({
+      gx:x,gy:y,px:wx(x*dr+16)+rand(-1.2,1.2),py:rand(1.6,3.4),pz:wz(y*dr+16)+rand(-1.2,1.2),
+      rx:rand(0,TAU),ry:rand(0,TAU),rz:rand(0,TAU),
+      sx:rand(0.4,1.0),sy:rand(0.4,1.0),sz:rand(0.4,1.0)
+    }));
+    mkDecor(new THREE.OctahedronGeometry(0.22,0),
+      new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.55,blending:THREE.AdditiveBlending,depthWrite:false}),
+      glyphItems,accent,0x0c1218,1.2);
+  }
+
+  // 房间地面符环：声波照亮时自地面浮现，给出房间中心参照
+  if(G.floor>=1&&G.floor<=2&&d.rooms){
+    const sigGeo=new THREE.RingGeometry(1.45,1.8,40);
+    d.rooms.forEach(([rx,ry,rw,rh],i)=>{
+      const cx=rx+(rw>>1),cy=ry+(rh>>1);
+      const mat=new THREE.MeshBasicMaterial({color:accent,transparent:true,opacity:0.06,
+        side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false});
+      const mesh=new THREE.Mesh(sigGeo,mat);
+      mesh.rotation.set(-Math.PI/2,0,rand(0,TAU));
+      mesh.position.set(wx(cx*dr),0.045,wz(cy*dr));
+      world.add(mesh);
+      roomSigils.push({mesh,mat,gx:cx,gy:cy,spin:i%2?-1:1});
+    });
+  }
+
+  // 终焉圣殿的仪式同心环
+  if(G.floor===3&&G.boss){
+    for(let i=0;i<3;i++){
+      const r=2.2+i*0.85;
+      const mat=new THREE.MeshBasicMaterial({color:0xffd24d,transparent:true,opacity:0.16,
+        side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false});
+      const mesh=new THREE.Mesh(new THREE.RingGeometry(r,r+0.09,52),mat);
+      mesh.rotation.set(-Math.PI/2,0,rand(0,TAU));
+      mesh.position.set(wx(G.boss.x),0.05,wz(G.boss.y));
+      world.add(mesh);
+      arenaRings.push({mesh,mat,spin:i%2?-1:1,phase:i});
+    }
+  }
 }
 
 function buildPot(pot){
   const g=new THREE.Group();
   g.position.set(wx(pot.x),0,wz(pot.y));
   const potMat=new THREE.MeshStandardMaterial({color:0x34281c,emissive:0xffaa3b,emissiveIntensity:0.25,roughness:0.75,metalness:0.2});
-  const body=new THREE.Mesh(new THREE.SphereGeometry(0.34,10,8),potMat);
-  body.position.y=0.34;body.scale.set(1,1.15,1);g.add(body);
-  const neck=new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.2,0.2,10),potMat);
-  neck.position.y=0.64;g.add(neck);
-  const rim=new THREE.Mesh(new THREE.TorusGeometry(0.16,0.035,6,16),new THREE.MeshBasicMaterial({color:0xffd24d}));
-  rim.rotation.x=Math.PI/2;rim.position.y=0.72;g.add(rim);
+  const goldBasic=new THREE.MeshBasicMaterial({color:0xffd24d});
+  const darkClay=new THREE.MeshStandardMaterial({color:0x1d1610,emissive:0x4a2f0a,emissiveIntensity:0.35,roughness:0.9});
+  const v=pot.variant||0;
+
+  if(v===1){
+    // 双耳陶尊：更瘦高的器身与两侧环形提耳
+    const body=new THREE.Mesh(new THREE.SphereGeometry(0.3,12,10),potMat);
+    body.position.y=0.42;body.scale.set(0.92,1.45,0.92);g.add(body);
+    const neck=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.17,0.22,10),potMat);
+    neck.position.y=0.86;g.add(neck);
+    const rim=new THREE.Mesh(new THREE.TorusGeometry(0.13,0.03,6,16),goldBasic);
+    rim.rotation.x=Math.PI/2;rim.position.y=0.98;g.add(rim);
+    for(const side of[-1,1]){
+      const ear=new THREE.Mesh(new THREE.TorusGeometry(0.11,0.025,6,14,Math.PI*1.25),potMat);
+      ear.position.set(side*0.26,0.56,0);
+      ear.rotation.set(0,side*Math.PI/2,side*0.5);g.add(ear);
+    }
+  }else if(v===2){
+    // 矮脚瓮：扁圆器身 + 盖钮 + 一道旧裂纹
+    const body=new THREE.Mesh(new THREE.SphereGeometry(0.38,12,9),potMat);
+    body.position.y=0.3;body.scale.set(1.1,0.78,1.1);g.add(body);
+    const foot=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.24,0.1,10),darkClay);
+    foot.position.y=0.05;g.add(foot);
+    const lid=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.24,0.1,10),potMat);
+    lid.position.y=0.56;g.add(lid);
+    const knob=new THREE.Mesh(new THREE.OctahedronGeometry(0.07),goldBasic);
+    knob.position.y=0.66;g.add(knob);
+    const crack=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.3,0.02),darkClay);
+    crack.position.set(0.3,0.34,0.16);crack.rotation.z=0.32;g.add(crack);
+  }else{
+    const body=new THREE.Mesh(new THREE.SphereGeometry(0.34,10,8),potMat);
+    body.position.y=0.34;body.scale.set(1,1.15,1);g.add(body);
+    const neck=new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.2,0.2,10),potMat);
+    neck.position.y=0.64;g.add(neck);
+    const rim=new THREE.Mesh(new THREE.TorusGeometry(0.16,0.035,6,16),goldBasic);
+    rim.rotation.x=Math.PI/2;rim.position.y=0.72;g.add(rim);
+  }
   return g;
 }
 
 function mat(color,emissive,em=0.7,rough=0.55,extra={}){
   return new THREE.MeshStandardMaterial({color,emissive,emissiveIntensity:em,roughness:rough,metalness:0.2,...extra});
+}
+
+/* ===================== 地表纹理贴花：苔痕 / 裂纹 / 水渍 ===================== */
+function createDecalTex(kind){
+  const cv=document.createElement("canvas");cv.width=cv.height=64;
+  const c=cv.getContext("2d");
+  c.clearRect(0,0,64,64);
+  if(kind==="moss"){
+    for(let i=0;i<44;i++){
+      c.fillStyle=`rgba(${randi(52,96)},${randi(120,178)},${randi(82,124)},${rand(0.05,0.2)})`;
+      c.beginPath();c.arc(rand(4,60),rand(4,60),rand(2,9),0,TAU);c.fill();
+    }
+  }else if(kind==="crack"){
+    c.strokeStyle="rgba(0,0,0,.62)";c.lineCap="round";
+    for(let k=0;k<3;k++){
+      c.lineWidth=rand(1,2.4);
+      let x=rand(4,60),y=rand(4,60);
+      c.beginPath();c.moveTo(x,y);
+      for(let i=0;i<4;i++){x+=rand(-13,13);y+=rand(-11,15);c.lineTo(x,y);}
+      c.stroke();
+    }
+  }else{
+    const g=c.createRadialGradient(32,32,2,32,32,30);
+    g.addColorStop(0,"rgba(4,18,26,.30)");g.addColorStop(1,"rgba(4,18,26,0)");
+    c.fillStyle=g;c.fillRect(0,0,64,64);
+  }
+  const t=new THREE.CanvasTexture(cv);
+  t.magFilter=THREE.LinearFilter;t.minFilter=THREE.LinearFilter;
+  return t;
+}
+
+const DECAL_KINDS=[
+  {kind:"moss",opacity:0.32,color:0x76e0ae,count:0.045},
+  {kind:"crack",opacity:0.34,color:0x0a1420,count:0.055},
+  {kind:"stain",opacity:0.28,color:0x0a1a26,count:0.04},
+];
+
+function buildDecals(floorCells){
+  if(!floorCells||!floorCells.length)return;
+  const dr=CFG.cell;
+  for(const dk of DECAL_KINDS){
+    const tex=createDecalTex(dk.kind);
+    const n=Math.max(2,Math.floor(floorCells.length*dk.count));
+    const mesh=new THREE.InstancedMesh(
+      new THREE.PlaneGeometry(3.6,3.6),
+      new THREE.MeshBasicMaterial({map:tex,transparent:true,opacity:dk.opacity,
+        depthWrite:false,color:dk.color,blending:THREE.NormalBlending}),
+      n);
+    mesh.frustumCulled=false;
+    const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),e=new THREE.Euler(),v=new THREE.Vector3(),s=new THREE.Vector3();
+    for(let i=0;i<n;i++){
+      const c=floorCells[randi(0,floorCells.length-1)];
+      e.set(-Math.PI/2+rand(-0.02,0.02),0,rand(0,TAU));q.setFromEuler(e);
+      v.set(wx(c[0]*dr+16)+rand(-1.2,1.2),0.012,wz(c[1]*dr+16)+rand(-1.2,1.2));
+      const sc=rand(0.6,1.25);s.set(sc,sc,1);
+      m4.compose(v,q,s);
+      mesh.setMatrixAt(i,m4);
+    }
+    world.add(mesh);
+  }
+}
+
+/* ===================== 织音者 NPC ===================== */
+function buildNpc(npc){
+  const grp=new THREE.Group();
+  grp.position.set(wx(npc.x),0,wz(npc.y));
+  const robeMat=new THREE.MeshStandardMaterial({color:0x1d2a3c,emissive:0x0b1c28,emissiveIntensity:0.5,roughness:0.82});
+  const trimMat=new THREE.MeshStandardMaterial({color:0x2c4657,emissive:0x1e7c8e,emissiveIntensity:0.55,roughness:0.5,metalness:0.35});
+  const skinMat=new THREE.MeshStandardMaterial({color:0x9fb4c8,emissive:0x143040,emissiveIntensity:0.4,roughness:0.7});
+
+  const body=new THREE.Group();grp.add(body);
+  // 长袍：下摆微张的锥形轮廓
+  const robe=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.46,1.24,12,1,true),robeMat);
+  robe.position.y=0.62;body.add(robe);
+  const hem=new THREE.Mesh(new THREE.TorusGeometry(0.45,0.055,6,18),trimMat);
+  hem.rotation.x=Math.PI/2;hem.position.y=0.02;body.add(hem);
+  // 肩部披挂与头巾
+  const mantle=new THREE.Mesh(new THREE.ConeGeometry(0.36,0.42,12,1,true),robeMat);
+  mantle.position.y=1.06;body.add(mantle);
+  const hood=new THREE.Mesh(new THREE.SphereGeometry(0.2,12,10,0,TAU,0,Math.PI*0.72),robeMat);
+  hood.position.y=1.28;hood.scale.set(1,1.08,1);body.add(hood);
+  const face=new THREE.Mesh(new THREE.SphereGeometry(0.12,10,8),skinMat);
+  face.position.set(0,1.24,0.07);body.add(face);
+  // 面部的两道冷光眼缝
+  for(const side of[-1,1]){
+    const eye=new THREE.Mesh(new THREE.SphereGeometry(0.022,8,6),new THREE.MeshBasicMaterial({color:0x8defff}));
+    eye.position.set(side*0.048,1.26,0.16);body.add(eye);
+  }
+
+  // 提灯：细杆悬吊的发光灯体
+  const lantern=new THREE.Group();
+  lantern.position.set(0.42,1.12,0.06);body.add(lantern);
+  const rod=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,0.5,5),trimMat);
+  rod.rotation.z=0.42;rod.position.set(0.14,0.16,0);lantern.add(rod);
+  const cage=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.08,0.18,8,1,true),trimMat);
+  cage.position.set(0.27,-0.1,0);lantern.add(cage);
+  const core=new THREE.Mesh(new THREE.OctahedronGeometry(0.06,0),
+    new THREE.MeshBasicMaterial({color:0x9ef0ff,transparent:true,opacity:0.95}));
+  core.position.set(0.27,-0.1,0);lantern.add(core);
+  const lampLight=new THREE.PointLight(0x8defff,0.9,6,2);
+  lampLight.position.set(0.27,-0.08,0);lantern.add(lampLight);
+
+  // 头顶缓慢旋转的织音环
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(0.28,0.014,6,26),
+    new THREE.MeshBasicMaterial({color:0x8defff,transparent:true,opacity:0.55,blending:THREE.AdditiveBlending,depthWrite:false}));
+  ring.rotation.x=Math.PI/2;ring.position.y=1.56;body.add(ring);
+  const ring2=new THREE.Mesh(new THREE.TorusGeometry(0.2,0.01,6,20),
+    new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.28,blending:THREE.AdditiveBlending,depthWrite:false}));
+  ring2.rotation.set(Math.PI/2.4,0.4,0);ring2.position.y=1.6;body.add(ring2);
+
+  grp.userData={body,lantern,ring,ring2,core,lampLight,baseY:1.12};
+  return grp;
+}
+
+/* ===================== 隐秘石室 ===================== */
+function buildSecretRune(){
+  const s=G.secret;if(!s)return;
+  const cx=(s.room.x+(s.room.w>>1))*CFG.cell+16,cy=(s.room.y+(s.room.h>>1))*CFG.cell+16;
+  const mat2=new THREE.MeshBasicMaterial({color:0xffd24d,transparent:true,opacity:0.22,
+    side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false});
+  const rune=new THREE.Mesh(new THREE.RingGeometry(1.1,1.42,34),mat2);
+  rune.rotation.set(-Math.PI/2,0,rand(0,TAU));
+  rune.position.set(wx(cx),0.04,wz(cy));
+  rune.visible=false;
+  world.add(rune);
+  G.secretRune=rune;
+  // 门格墙面上的裂纹刻痕：贴在门前那一侧的墙面，靠近声波照亮时才看得清
+  const dm=new THREE.MeshBasicMaterial({color:0xffaa3b,transparent:true,opacity:0.34,depthWrite:false,
+    side:THREE.DoubleSide});
+  const crack=new THREE.Mesh(new THREE.PlaneGeometry(2.0,2.0),dm);
+  const f=s.face||{x:s.door.x,y:s.door.y+1};
+  const nx=Math.sign(s.door.x-f.x),ny=Math.sign(s.door.y-f.y);
+  crack.position.set(wx(s.door.x*CFG.cell+16)+nx*2.02,1.5,wz(s.door.y*CFG.cell+16)+ny*2.02);
+  crack.rotation.y=Math.atan2(nx,ny);
+  crack.visible=false;
+  world.add(crack);
+  G.secretCrack=crack;
+}
+
+function revealSecret(){
+  const s=G.secret;if(!s||s.revealed)return;
+  s.revealed=true;
+  const dr=CFG.cell,dx=s.door.x,dy=s.door.y;
+  if(G.grid[dy]&&G.grid[dy][dx]===1)G.grid[dy][dx]=0;
+  // 抹去门格的墙体实例与压顶
+  if(wallId&&wallId[dy]&&wallId[dy][dx]>=0){
+    const wi=wallId[dy][dx],zero=new THREE.Matrix4().makeScale(0,0,0);
+    wallInst.setMatrixAt(wi,zero);wallInst.instanceColor.needsUpdate=true;
+    capInst.setMatrixAt(wi,zero);capInst.instanceColor.needsUpdate=true;
+    // 同一墙格的浅浮雕、基座和雉堞也一并移除，保证暗室入口真正敞开。
+    for(const ds of decorSets){
+      let changed=false;
+      ds.items.forEach((it,i)=>{if(it.gx===dx&&it.gy===dy){ds.mesh.setMatrixAt(i,zero);changed=true;}});
+      if(changed)ds.mesh.instanceMatrix.needsUpdate=true;
+    }
+    wallId[dy][dx]=-1;
+  }
+  // 补上门格地板
+  if(!G.secretFloor){
+    const mats=getFloorMats(G.floor);
+    const fm=new THREE.Mesh(new THREE.PlaneGeometry(dr,dr),new THREE.MeshLambertMaterial({map:mats.floorMat.map,color:0x14202e}));
+    fm.rotation.x=-Math.PI/2;
+    fm.position.set(wx(dx*dr+16),0,wz(dy*dr+16));
+    world.add(fm);G.secretFloor=fm;
+  }
+  if(G.secretRune)G.secretRune.visible=true;
+  if(G.secretCrack)G.secretCrack.visible=false;
+  if(G.chests)G.chests.forEach(c=>{if(c.secret&&c.grp)c.grp.visible=true;});
+  Audio2.play("potBreak",dx*dr+16,dy*dr+16);
+  addWave(dx*dr+16,dy*dr+16,170,0.9,COL.gold,"secretOpen");
+  for(let i=0;i<20;i++)spawnSpark(dx*dr+16,dy*dr+16,COL.gold,rand(30,90));
+  shake=9;
+  toast("石 壁 崩 裂 · 发 现 隐 秘 石 室");
 }
 
 function buildFoe(f){
@@ -1719,6 +2528,16 @@ function buildFoe(f){
     for(let i=0;i<4;i++){
       const rib=new THREE.Mesh(new THREE.TorusGeometry(0.21-i*0.018,0.014,6,18,Math.PI*1.08),darkF);
       rib.rotation.x=Math.PI/2;rib.position.y=0.12+i*0.12;rib.position.z=0.02;torso.add(rib);
+    }
+    // 背部椎刺与残缺肩甲：让盲行者的骸骨轮廓在声波中更易辨认
+    for(let i=0;i<3;i++){
+      const spike=new THREE.Mesh(new THREE.ConeGeometry(0.042,0.13+i*0.035,4),darkF);
+      spike.position.set(0,0.52-i*0.13,-0.18);
+      spike.rotation.x=-1.15;torso.add(spike);
+    }
+    for(const side of[-1,1]){
+      const plate=new THREE.Mesh(new THREE.SphereGeometry(0.1,8,6,0,TAU,0,Math.PI*0.62),darkF);
+      plate.position.set(side*0.2,0.5,0);plate.scale.set(1,0.66,1.15);torso.add(plate);
     }
     const neck=new THREE.Mesh(new THREE.CylinderGeometry(0.065,0.08,0.16,10),skin);neck.position.y=0.62;torso.add(neck);
 
@@ -1748,6 +2567,22 @@ function buildFoe(f){
     }
     const aL=mkArm(-1),aR=mkArm(1);
     grp.userData={aL,aR,lL,lR,head,torso,skin,base:0.25};
+    if(f.elite){
+      // 精英标记：背脊燃起的暗红晶簇 + 脚下警示环
+      grp.scale.setScalar(f.scale||1.3);
+      const crown=new THREE.Group();crown.position.y=0.62;torso.add(crown);
+      for(let i=0;i<4;i++){
+        const shard=new THREE.Mesh(new THREE.ConeGeometry(0.05,0.28,5),
+          new THREE.MeshStandardMaterial({color:0x3a0a12,emissive:0xff2e4d,emissiveIntensity:0.9,roughness:0.4}));
+        shard.position.set(rand(-0.16,0.16),0.1,-0.12);
+        shard.rotation.set(rand(-0.4,0.4),rand(0,TAU),rand(-0.4,0.4));crown.add(shard);
+      }
+      const ring=new THREE.Mesh(new THREE.RingGeometry(0.5,0.62,26),
+        new THREE.MeshBasicMaterial({color:0xff4d61,transparent:true,opacity:0.5,side:THREE.DoubleSide,
+          blending:THREE.AdditiveBlending,depthWrite:false}));
+      ring.rotation.x=-Math.PI/2;ring.position.y=0.02;grp.add(ring);
+      grp.userData.eliteRing=ring;
+    }
   }else if(f.type==="howler"){
     const sac=mat(0x8a5218,0xffaa3b,0.6,0.5);
     const body=new THREE.Group();body.position.y=0.62;grp.add(body);
@@ -1763,8 +2598,27 @@ function buildFoe(f){
     rim.rotation.x=Math.PI/2;rim.position.y=0.52;horn.add(rim);
     const core=new THREE.Mesh(new THREE.SphereGeometry(0.14,14,12),new THREE.MeshBasicMaterial({color:0xffd24d}));
     core.position.y=0.48;horn.add(core);
+    // 两侧号角状耳廓：强化"以声为生"的生物感
+    const earMat=new THREE.MeshStandardMaterial({color:0x6b3f10,emissive:0xffaa3b,emissiveIntensity:0.5,
+      roughness:0.5,metalness:0.15,side:THREE.DoubleSide});
+    const ears=[];
+    for(const side of[-1,1]){
+      const ear=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.26,0.5,12,1,true),earMat);
+      ear.position.set(side*0.5,0.08,0);
+      ear.rotation.z=side*Math.PI*0.42;
+      body.add(ear);ears.push(ear);
+    }
+    // 环绕的声能浮游光点
+    const moteMat=new THREE.MeshBasicMaterial({color:0xffd24d,transparent:true,opacity:0.85});
+    const motes=[];
+    for(let i=0;i<5;i++){
+      const m=new THREE.Mesh(new THREE.SphereGeometry(0.035,8,6),moteMat);
+      const a=i/5*TAU;
+      m.position.set(Math.cos(a)*0.72,0.4+Math.sin(i*1.7)*0.28,Math.sin(a)*0.72);
+      body.add(m);motes.push(m);
+    }
     const pl=new THREE.PointLight(0xffaa3b,0.7,3.5,2);pl.position.y=1;body.add(pl);
-    grp.userData={body,horn,core,sac};
+    grp.userData={body,horn,core,sac,ears,motes};
   }else{
     const fogMat=new THREE.MeshStandardMaterial({color:0x42195c,emissive:0xb861ff,emissiveIntensity:0.25,
       transparent:true,opacity:0.22,roughness:0.35});
@@ -1835,38 +2689,206 @@ function buildDoor(){
 
 function buildPillars(){
   const flCol=CFG.floors[G.floor]?CFG.floors[G.floor].wallCol:0xffd24d;
+  const pillarTex=createPillarTex(G.floor,flCol);
+  const shaftMat=new THREE.MeshStandardMaterial({map:pillarTex,bumpMap:pillarTex,bumpScale:0.045,
+    color:0xb8c3ce,emissive:flCol,emissiveIntensity:0.2,metalness:0.12,roughness:0.82,flatShading:true});
+  const stoneM=new THREE.MeshStandardMaterial({map:pillarTex,color:0x788796,emissive:flCol,
+    emissiveIntensity:0.16,metalness:0.1,roughness:0.88,flatShading:true});
+  const insetM=new THREE.MeshStandardMaterial({color:0x101923,emissive:flCol,emissiveIntensity:0.12,roughness:0.94});
+  const glowM=new THREE.MeshBasicMaterial({color:flCol,transparent:true,opacity:0.82});
   for(const pl of G.pillars){
     const grp=new THREE.Group();grp.position.set(wx(pl.x),0,wz(pl.y));
-    const shaftMat=new THREE.MeshStandardMaterial({color:0x223040,emissive:flCol,emissiveIntensity:0.35,metalness:0.45,roughness:0.35});
-    const stoneM=new THREE.MeshStandardMaterial({color:0x15202c,emissive:flCol,emissiveIntensity:0.25,metalness:0.35,roughness:0.55});
-    const base=new THREE.Mesh(new THREE.CylinderGeometry(0.52,0.58,0.24,8),stoneM);
-    base.position.y=0.12;grp.add(base);
-    const shaft=new THREE.Mesh(new THREE.CylinderGeometry(0.24,0.32,2.8,8,1),shaftMat);
-    shaft.position.y=1.72;grp.add(shaft);
-    const crystal=new THREE.Mesh(new THREE.OctahedronGeometry(0.36),new THREE.MeshBasicMaterial({color:flCol}));
-    crystal.position.y=3.55;grp.add(crystal);
-    const runeRing=new THREE.Mesh(new THREE.RingGeometry(0.5,0.72,24),
-      new THREE.MeshBasicMaterial({color:flCol,transparent:true,opacity:0.65,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false}));
+    grp.rotation.y=(pl.seed||0)*0.17;
+
+    // 三段式基座与收分柱脚，轮廓仍保持低多边形。
+    const foot=new THREE.Mesh(new THREE.CylinderGeometry(0.68,0.74,0.16,12),stoneM);
+    foot.position.y=0.08;grp.add(foot);
+    const base=new THREE.Mesh(new THREE.CylinderGeometry(0.53,0.63,0.24,12),stoneM);
+    base.position.y=0.27;grp.add(base);
+    const baseCollar=new THREE.Mesh(new THREE.TorusGeometry(0.45,0.055,6,24),insetM);
+    baseCollar.rotation.x=Math.PI/2;baseCollar.position.y=0.43;grp.add(baseCollar);
+
+    const shaft=new THREE.Mesh(new THREE.CylinderGeometry(0.25,0.33,2.5,12,4),shaftMat);
+    shaft.position.y=1.7;grp.add(shaft);
+    // 凸起的石材嵌条和暗色刻槽，在近景形成可辨认的纵向节奏。
+    for(let i=0;i<8;i++){
+      const a=i/8*TAU;
+      const rib=new THREE.Mesh(new THREE.BoxGeometry(0.045,2.08,0.055),i%2?stoneM:insetM);
+      rib.position.set(Math.cos(a)*0.292,1.7,Math.sin(a)*0.292);
+      rib.rotation.y=Math.PI/2-a;grp.add(rib);
+    }
+    for(const y of[0.55,2.82]){
+      const collar=new THREE.Mesh(new THREE.CylinderGeometry(0.39,0.39,0.15,12),stoneM);
+      collar.position.y=y;grp.add(collar);
+      const seam=new THREE.Mesh(new THREE.TorusGeometry(0.4,0.025,5,24),insetM);
+      seam.rotation.x=Math.PI/2;seam.position.y=y+0.075;grp.add(seam);
+    }
+    const capital=new THREE.Mesh(new THREE.CylinderGeometry(0.56,0.4,0.26,12),stoneM);
+    capital.position.y=3.0;grp.add(capital);
+    const abacus=new THREE.Mesh(new THREE.BoxGeometry(0.92,0.14,0.92),stoneM);
+    abacus.position.y=3.18;abacus.rotation.y=Math.PI/4;grp.add(abacus);
+
+    // 四面嵌有克制的共鸣符文，不做整根柱子泛光。
+    const runeBand=new THREE.Mesh(new THREE.TorusGeometry(0.335,0.018,5,32),glowM);
+    runeBand.rotation.x=Math.PI/2;runeBand.position.y=2.12;grp.add(runeBand);
+    for(let i=0;i<4;i++){
+      const a=i/4*TAU;
+      const rune=new THREE.Mesh(new THREE.BoxGeometry(0.055,0.2,0.018),glowM);
+      rune.position.set(Math.cos(a)*0.32,2.12,Math.sin(a)*0.32);
+      rune.rotation.y=Math.PI/2-a;rune.rotation.z=Math.PI/4;grp.add(rune);
+    }
+    for(let i=0;i<3;i++){
+      const a=(pl.seed||0)+i*2.05;
+      const crack=new THREE.Mesh(new THREE.PlaneGeometry(0.026,0.34+i*0.08),
+        new THREE.MeshBasicMaterial({color:0x070d14,transparent:true,opacity:0.72,side:THREE.DoubleSide}));
+      crack.position.set(Math.cos(a)*0.326,1.05+i*0.47,Math.sin(a)*0.326);
+      crack.rotation.y=Math.PI/2-a;crack.rotation.z=0.28-i*0.21;grp.add(crack);
+    }
+
+    const crystal=new THREE.Group();crystal.position.y=3.65;
+    const core=new THREE.Mesh(new THREE.OctahedronGeometry(0.3,0),glowM);crystal.add(core);
+    const cage=new THREE.Mesh(new THREE.OctahedronGeometry(0.4,0),
+      new THREE.MeshBasicMaterial({color:flCol,wireframe:true,transparent:true,opacity:0.36}));crystal.add(cage);
+    grp.add(crystal);
+    const runeRing=new THREE.Mesh(new THREE.RingGeometry(0.58,0.78,32),
+      new THREE.MeshBasicMaterial({color:flCol,transparent:true,opacity:0.5,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false}));
     runeRing.rotation.x=-Math.PI/2;runeRing.position.y=0.04;grp.add(runeRing);
-    const light=new THREE.PointLight(flCol,0.8,9,1.6);light.position.y=3;grp.add(light);
-    grp.userData={shaft,crystal,light,runeRing};
+    const light=new THREE.PointLight(flCol,0.65,8,1.7);light.position.y=3.25;grp.add(light);
+    grp.userData={shaft,crystal,light,runeRing,runeBand};
     pl._grp=grp;world.add(grp);
   }
 }
 
-function buildPools(){
-  if(!G.pools)return;
-  for(const pool of G.pools){
-    const pgeo=new THREE.PlaneGeometry(pool.w*S,pool.h*S);
-    const waterMat=new THREE.MeshBasicMaterial({
-      color:0x38bdf8,transparent:true,opacity:0.45,
-      side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false
-    });
-    const mesh=new THREE.Mesh(pgeo,waterMat);
-    mesh.rotation.x=-Math.PI/2;
-    mesh.position.set(wx(pool.cx),0.025,wz(pool.cy));
-    world.add(mesh);
-    pool._mesh=mesh;
+/* ===================== 回音喷泉 ===================== */
+// 水池已整体替换为房间正中的石砌喷泉：只有一汪安静的池水，不再铺满整间房，
+// 也没有密集的焦散贴图，靠石作结构与水束本身立住形体。
+
+function buildFountains(){
+  if(!G.fountains)return;
+  for(const fn of G.fountains){
+    const grp=new THREE.Group();
+    grp.position.set(wx(fn.x),0,wz(fn.y));
+    grp.rotation.y=fn.seed||0;
+
+    const stoneMat=new THREE.MeshStandardMaterial({color:0x3a5666,emissive:0x2a7188,emissiveIntensity:0.78,roughness:0.86,metalness:0.06});
+    const stoneDark=new THREE.MeshStandardMaterial({color:0x273c48,emissive:0x1d5b70,emissiveIntensity:0.62,roughness:0.94});
+    const wetMat=new THREE.MeshStandardMaterial({color:0x4a7d8e,emissive:0x2e93b2,emissiveIntensity:0.7,roughness:0.38,metalness:0.2});
+    const glowCol=0x9df2ff;
+
+    // 八角石盆：只占房间中央一格，盆口收得比旧水池小得多
+    const basin=new THREE.Mesh(new THREE.LatheGeometry([
+      new THREE.Vector2(0.74,0),new THREE.Vector2(0.92,0),new THREE.Vector2(1.0,0.09),
+      new THREE.Vector2(1.02,0.42),new THREE.Vector2(0.94,0.52),new THREE.Vector2(0.76,0.52),
+      new THREE.Vector2(0.7,0.42),new THREE.Vector2(0.7,0.15),new THREE.Vector2(0.56,0.12)
+    ],12),stoneMat);
+    grp.add(basin);
+
+    // 池沿分块墩石：把光滑的车削面切成手砌石作
+    const rimN=12,rimInst=new THREE.InstancedMesh(new THREE.BoxGeometry(0.36,0.15,0.22),stoneDark,rimN);
+    const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),e=new THREE.Euler(),v=new THREE.Vector3(),s3=new THREE.Vector3();
+    for(let i=0;i<rimN;i++){
+      const a=i/rimN*TAU;
+      q.setFromEuler(e.set(0,-a,0));
+      v.set(Math.cos(a)*0.94,0.54,Math.sin(a)*0.94);
+      s3.set(rand(0.92,1.04),1,rand(0.9,1.06));
+      m4.compose(v,q,s3);rimInst.setMatrixAt(i,m4);
+      rimInst.setColorAt(i,new THREE.Color().setHSL(0.53,0.16,rand(0.3,0.44)));
+    }
+    rimInst.instanceColor.needsUpdate=true;rimInst.frustumCulled=false;grp.add(rimInst);
+
+    // 盆中水面：单一色块，只靠一圈微光和呼吸般的起伏表现水面
+    const water=new THREE.Mesh(new THREE.CircleGeometry(0.7,26),
+      new THREE.MeshBasicMaterial({color:0x2a86a2,transparent:true,opacity:0.96,side:THREE.DoubleSide}));
+    water.rotation.x=-Math.PI/2;water.position.y=0.38;grp.add(water);
+    const waterSheen=new THREE.Mesh(new THREE.CircleGeometry(0.62,26),
+      new THREE.MeshBasicMaterial({color:0x5ed4ee,transparent:true,opacity:0.4,
+        side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false}));
+    waterSheen.rotation.x=-Math.PI/2;waterSheen.position.y=0.388;grp.add(waterSheen);
+
+    // 池沿发光石线与四枚嵌石：在几乎全黑的地牢里，喷泉靠自身微光就能被认出来
+    const rimGlow=new THREE.Mesh(new THREE.TorusGeometry(0.95,0.016,6,36),
+      new THREE.MeshBasicMaterial({color:glowCol,transparent:true,opacity:0.5,blending:THREE.AdditiveBlending,depthWrite:false}));
+    rimGlow.rotation.x=-Math.PI/2;rimGlow.position.y=0.535;grp.add(rimGlow);
+    for(let i=0;i<4;i++){
+      const a=i/4*TAU+Math.PI/4;
+      const gem=new THREE.Mesh(new THREE.OctahedronGeometry(0.075,0),
+        new THREE.MeshBasicMaterial({color:glowCol,transparent:true,opacity:0.85}));
+      gem.position.set(Math.cos(a)*0.9,0.545,Math.sin(a)*0.9);grp.add(gem);
+    }
+    // 地面光圈：让喷泉在暗场里有一圈可辨认的落水反光
+    const floorGlow=new THREE.Mesh(new THREE.RingGeometry(1.12,1.48,32),
+      new THREE.MeshBasicMaterial({color:0x2f9fc0,transparent:true,opacity:0.16,side:THREE.DoubleSide,
+        blending:THREE.AdditiveBlending,depthWrite:false}));
+    floorGlow.rotation.x=-Math.PI/2;floorGlow.position.y=0.012;grp.add(floorGlow);
+
+    // 中央石柱：粗一些、高一些，喷泉的竖向轮廓才立得住
+    const pedestal=new THREE.Mesh(new THREE.LatheGeometry([
+      new THREE.Vector2(0.34,0.12),new THREE.Vector2(0.28,0.2),new THREE.Vector2(0.22,0.55),
+      new THREE.Vector2(0.19,1.02),new THREE.Vector2(0.26,1.08),new THREE.Vector2(0.22,1.14)
+    ],10),wetMat);
+    grp.add(pedestal);
+    const bowl=new THREE.Mesh(new THREE.LatheGeometry([
+      new THREE.Vector2(0.16,1.12),new THREE.Vector2(0.5,1.2),new THREE.Vector2(0.6,1.28),
+      new THREE.Vector2(0.58,1.34),new THREE.Vector2(0.48,1.28),new THREE.Vector2(0.18,1.2)
+    ],12),stoneMat);
+    grp.add(bowl);
+    const bowlWater=new THREE.Mesh(new THREE.CircleGeometry(0.44,20),
+      new THREE.MeshBasicMaterial({color:0x24728a,transparent:true,opacity:0.92,side:THREE.DoubleSide}));
+    bowlWater.rotation.x=-Math.PI/2;bowlWater.position.y=1.3;grp.add(bowlWater);
+
+    // 顶端喷口与核心晶石
+    const spout=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.12,0.2,8),wetMat);
+    spout.position.y=1.4;grp.add(spout);
+    const core=new THREE.Mesh(new THREE.OctahedronGeometry(0.1,0),
+      new THREE.MeshBasicMaterial({color:glowCol,transparent:true,opacity:0.85}));
+    core.position.y=1.5;grp.add(core);
+
+    // 主水柱：细而挺直，顶部一小团水花
+    const jetMat=new THREE.MeshBasicMaterial({color:0xbdf6ff,transparent:true,opacity:0.55,
+      blending:THREE.AdditiveBlending,depthWrite:false});
+    const jet=new THREE.Mesh(new THREE.CylinderGeometry(0.032,0.072,0.58,8,1,true),jetMat);
+    jet.position.y=1.84;grp.add(jet);
+    const crown=new THREE.Mesh(new THREE.SphereGeometry(0.11,10,8),jetMat);
+    crown.position.y=2.1;crown.scale.set(1.2,0.7,1.2);grp.add(crown);
+
+    // 六道落水束：从承水盘边缘斜落回池面
+    const streams=[];
+    for(let i=0;i<6;i++){
+      const holder=new THREE.Group();holder.rotation.y=i/6*TAU;
+      const sm=new THREE.MeshBasicMaterial({color:0x9fe9ff,transparent:true,opacity:0.28,
+        blending:THREE.AdditiveBlending,depthWrite:false});
+      const st=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.026,0.94,6,1,true),sm);
+      st.position.set(0.59,0.85,0);st.rotation.z=-0.28;
+      holder.add(st);grp.add(holder);streams.push(sm);
+    }
+
+    // 池面扩散涟漪
+    const rings=[];
+    for(let i=0;i<2;i++){
+      const rm=new THREE.MeshBasicMaterial({color:0xa8f3ff,transparent:true,opacity:0.28,
+        side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false});
+      const ring=new THREE.Mesh(new THREE.RingGeometry(0.5,0.62,26),rm);
+      ring.rotation.x=-Math.PI/2;ring.position.y=0.395;ring.userData.phase=i/2;
+      grp.add(ring);rings.push(ring);
+    }
+
+    // 溅落水滴：少量粒子足够说明水在动
+    const dropN=26,dropPos=new Float32Array(dropN*3),drops=[];
+    for(let i=0;i<dropN;i++){
+      drops.push({a:rand(0,TAU),r:rand(0,0.22),y:rand(1.2,2.05),vy:rand(-0.2,1.2),vr:rand(0.1,0.6)});
+    }
+    const dgeo=new THREE.BufferGeometry();
+    dgeo.setAttribute("position",new THREE.BufferAttribute(dropPos,3));
+    const dpoints=new THREE.Points(dgeo,new THREE.PointsMaterial({color:0xd6fbff,size:0.05,transparent:true,
+      opacity:0.7,blending:THREE.AdditiveBlending,depthWrite:false}));
+    dpoints.frustumCulled=false;grp.add(dpoints);
+
+    const light=new THREE.PointLight(0x7fe6ff,1.3,8,1.7);
+    light.position.y=1.4;grp.add(light);
+
+    fn._grp=grp;
+    fn._u={jet,jetMat,crown,core,streams,rings,water,waterSheen,light,dpoints,drops,dropPos,dgeo};
+    world.add(grp);
   }
 }
 
@@ -1888,6 +2910,17 @@ function buildChests(){
     trim.position.y=0.21;grp.add(trim);
     const lock=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.14,0.06),goldMat);
     lock.position.set(0,0.22,0.25);grp.add(lock);
+    // 两侧铰链与正面符文盘：让古匣的木金结构更完整
+    for(const side of[-1,1]){
+      const hinge=new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.035,0.12,8),goldMat);
+      hinge.rotation.z=Math.PI/2;
+      hinge.position.set(side*0.24,0.42,-0.24);grp.add(hinge);
+    }
+    const runePlate=new THREE.Mesh(new THREE.TorusGeometry(0.1,0.02,6,16),goldMat);
+    runePlate.position.set(0,0.2,0.265);grp.add(runePlate);
+    const gem=new THREE.Mesh(new THREE.OctahedronGeometry(0.05,0),
+      new THREE.MeshBasicMaterial({color:0xffe89e,transparent:true,opacity:0.9}));
+    gem.position.set(0,0.2,0.29);grp.add(gem);
 
     // 可旋转开启的弧顶箱盖
     const lidPivot=new THREE.Group();
@@ -1909,6 +2942,7 @@ function buildChests(){
     mark.rotation.x=-Math.PI/2;mark.position.y=0.035;grp.add(mark);
 
     grp.userData={lidPivot,innerLight,mark};
+    if(ch.secret&&G.secret&&!G.secret.revealed)grp.visible=false;
     ch.grp=grp;
     world.add(grp);
   }
@@ -1946,10 +2980,42 @@ function doInteract(){
     openChest(G._nearChest);
     return;
   }
+  if(G._nearNpc){
+    talkNpc(G._nearNpc);
+    return;
+  }
   if(G._nearDoor){
     ringDoor();
     return;
   }
+}
+
+/* 织音者低语：首次交谈给予一次馈赠，并暗示隐秘石室的方向 */
+function talkNpc(n){
+  const lines=[
+    "「……嘘。你听见了吗？这些石壁在呼吸。」",
+    "「声音不会说谎，但它会替说谎的人保守秘密。」",
+    "「把石头扔向更远的地方吧，回声会替你引路。」",
+    "「静默之时，才听得见真正的自己。」",
+  ];
+  n.lines=(n.lines||0)+1;
+  toast(lines[(n.lines-1)%lines.length]);
+  Audio2.play("pickup",n.x,n.y);
+  if(n.talked)return;
+  n.talked=true;
+  if(G.p.hp<G.p.maxHp){
+    G.p.hp=Math.min(G.p.maxHp,G.p.hp+1);
+    toast("织音者替你缝合了伤口 · 生命 +1");
+  }else{
+    G.p.stones=Math.min(G.p.stones+2,CFG.core.maxStone);
+    toast("织音者赠予两枚残余音石 · 音石 +2");
+  }
+  if(G.secret&&!G.secret.revealed){
+    G.secret.hinted=true;
+    G.mini[G.secret.door.y][G.secret.door.x]=Math.max(G.mini[G.secret.door.y][G.secret.door.x],0.7);
+    setTimeout(()=>toast("织音者指向暗处：「那边的墙……回音是空的。」"),1100);
+  }
+  updateHud();
 }
 
 function buildBoss(){
@@ -1996,76 +3062,311 @@ function buildBoss(){
 /* ===================== 玩家 3D 游戏内形象 ===================== */
 let avatar=null,av=null,swingT=0;
 
+// 选角展台与游戏内共用的角色形体：髋膝踝三段腿、分片胸甲、护肩、护腕手指与兜帽面部。
+// 只改变建模层次，配色与轮廓仍跟随各英雄原有的配色方案。
+function buildHeroFigure(hero,mats,opts){
+  const high=!!(opts&&opts.high);
+  const segW=high?16:10,segH=high?12:8;
+  const cloth=mats.cloth,dark=mats.dark,metal=mats.metal,glow=mats.glow;
+  const leather=mats.leather||dark;
+  const clothShell=cloth.clone();clothShell.side=THREE.DoubleSide;
+  const metalShell=metal.clone();metalShell.side=THREE.DoubleSide;
+  // 胸甲用压暗的钢色，避免整块银板在暗色布衣上过分抢眼
+  const armor=metal.clone();armor.color=new THREE.Color(0x33434e);armor.metalness=0.85;armor.roughness=0.42;
+  const armorShell=armor.clone();armorShell.side=THREE.DoubleSide;
+
+  const root=new THREE.Group();
+  const body=new THREE.Group();root.add(body);
+
+  /* ---------- 腿：大腿 · 膝节 · 护膝 · 小腿 · 胫甲 · 踝 · 靴 ---------- */
+  function mkLeg(side){
+    const leg=new THREE.Group();leg.position.set(side*0.135,0.82,0);
+    const thigh=new THREE.Mesh(new THREE.CylinderGeometry(0.088,0.102,0.34,segW),cloth);
+    thigh.position.y=-0.17;leg.add(thigh);
+    const knee=new THREE.Mesh(new THREE.SphereGeometry(0.074,segW,segH),dark);
+    knee.position.y=-0.35;leg.add(knee);
+    const kneeGuard=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.09,0.06),metal);
+    kneeGuard.position.set(0,-0.35,0.064);leg.add(kneeGuard);
+    const shin=new THREE.Mesh(new THREE.CylinderGeometry(0.064,0.08,0.32,segW),dark);
+    shin.position.y=-0.52;leg.add(shin);
+    const greave=new THREE.Mesh(new THREE.CylinderGeometry(0.082,0.092,0.16,segW,1,true),metalShell);
+    greave.position.y=-0.5;leg.add(greave);
+    const ankle=new THREE.Mesh(new THREE.SphereGeometry(0.054,segW,segH),dark);
+    ankle.position.y=-0.69;leg.add(ankle);
+    const boot=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.11,0.2),leather);
+    boot.position.set(0,-0.755,0.02);leg.add(boot);
+    const toe=new THREE.Mesh(new THREE.BoxGeometry(0.126,0.074,0.1),leather);
+    toe.position.set(0,-0.77,0.15);leg.add(toe);
+    const sole=new THREE.Mesh(new THREE.BoxGeometry(0.15,0.028,0.3),dark);
+    sole.position.set(0,-0.806,0.06);leg.add(sole);
+    const heel=new THREE.Mesh(new THREE.BoxGeometry(0.118,0.048,0.06),metal);
+    heel.position.set(0,-0.79,-0.07);leg.add(heel);
+    body.add(leg);return leg;
+  }
+  const legL=mkLeg(-1),legR=mkLeg(1);
+
+  /* ---------- 骨盆 · 腰带 · 挂袋 · 袍摆 ---------- */
+  const pelvis=new THREE.Mesh(new THREE.SphereGeometry(0.19,segW,segH),cloth);
+  pelvis.scale.set(1.05,0.8,0.86);pelvis.position.y=0.85;body.add(pelvis);
+  const skirt=new THREE.Mesh(new THREE.LatheGeometry([
+    new THREE.Vector2(0.268,0.88),new THREE.Vector2(0.258,0.79),
+    new THREE.Vector2(0.27,0.72),new THREE.Vector2(0.255,0.67)
+  ],segW),clothShell);
+  body.add(skirt);
+  // 垂在胯侧的护胯甲片，既补住裙摆边缘又不会挡住大腿
+  for(const side of[-1,1]){
+    const tasset=new THREE.Mesh(new THREE.BoxGeometry(0.13,0.2,0.05),metal);
+    tasset.position.set(side*0.185,0.76,0.045);
+    tasset.rotation.z=side*0.16;body.add(tasset);
+  }
+  const belt=new THREE.Mesh(new THREE.TorusGeometry(0.218,0.042,8,high?28:18),leather);
+  belt.rotation.x=Math.PI/2;belt.position.y=0.9;body.add(belt);
+  const buckle=new THREE.Mesh(new THREE.OctahedronGeometry(0.06,0),glow);
+  buckle.scale.z=0.5;buckle.position.set(0,0.9,0.222);body.add(buckle);
+  for(const side of[-1,1]){
+    const pouch=new THREE.Mesh(new THREE.BoxGeometry(0.088,0.108,0.062),leather);
+    pouch.position.set(side*0.19,0.83,0.075);pouch.rotation.z=side*0.12;body.add(pouch);
+    const flap=new THREE.Mesh(new THREE.BoxGeometry(0.092,0.03,0.066),metal);
+    flap.position.set(side*0.19,0.876,0.075);flap.rotation.z=side*0.12;body.add(flap);
+  }
+
+  /* ---------- 躯干 · 胸甲 · 腹甲 · 斜挎带 ---------- */
+  const torso=new THREE.Mesh(new THREE.LatheGeometry([
+    new THREE.Vector2(0.2,0.84),new THREE.Vector2(0.194,0.94),new THREE.Vector2(0.174,1.04),
+    new THREE.Vector2(0.2,1.14),new THREE.Vector2(0.232,1.24),new THREE.Vector2(0.218,1.32),
+    new THREE.Vector2(0.145,1.4)
+  ],segW),cloth);
+  body.add(torso);
+  const cuirass=new THREE.Mesh(new THREE.LatheGeometry([
+    new THREE.Vector2(0.208,1.0),new THREE.Vector2(0.236,1.1),new THREE.Vector2(0.238,1.2),
+    new THREE.Vector2(0.222,1.29),new THREE.Vector2(0.17,1.34)
+  ],segW),armorShell);
+  body.add(cuirass);
+  const ridge=new THREE.Mesh(new THREE.BoxGeometry(0.026,0.26,0.028),metal);
+  ridge.position.set(0,1.16,0.226);body.add(ridge);
+  const sigil=new THREE.Mesh(new THREE.OctahedronGeometry(0.05,0),glow);
+  sigil.scale.set(1,1.25,0.45);sigil.position.set(0,1.2,0.238);body.add(sigil);
+  for(const side of[-1,1]){
+    const sidePlate=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.2,0.03),armor);
+    sidePlate.position.set(side*0.16,1.1,0.17);sidePlate.rotation.z=side*0.18;body.add(sidePlate);
+  }
+  const strap=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.6,0.024),leather);
+  strap.position.set(0.015,1.06,0.205);strap.rotation.z=-0.5;body.add(strap);
+  const clasp=new THREE.Mesh(new THREE.OctahedronGeometry(0.045,0),metal);
+  clasp.scale.z=0.4;clasp.position.set(-0.1,1.06,0.225);body.add(clasp);
+
+  /* ---------- 护肩 ---------- */
+  for(const side of[-1,1]){
+    const pauldron=new THREE.Mesh(new THREE.SphereGeometry(0.118,segW,segH,0,TAU,0,Math.PI*0.58),armor);
+    pauldron.scale.set(1.12,0.92,1.04);
+    pauldron.position.set(side*0.266,1.3,0);
+    pauldron.rotation.z=side*0.16;
+    body.add(pauldron);
+    const trim=new THREE.Mesh(new THREE.TorusGeometry(0.115,0.011,6,high?24:16),metal);
+    trim.rotation.x=Math.PI/2;trim.position.set(side*0.266,1.292,0);body.add(trim);
+  }
+
+  /* ---------- 颈 · 头 · 兜帽 · 面罩 ---------- */
+  const neck=new THREE.Mesh(new THREE.CylinderGeometry(0.068,0.082,0.12,segW),dark);
+  neck.position.y=1.44;body.add(neck);
+  const head=new THREE.Group();head.position.y=1.56;body.add(head);
+  const hood=new THREE.Mesh(new THREE.SphereGeometry(0.205,segW,segH),cloth);
+  hood.scale.set(0.98,1.06,0.96);head.add(hood);
+  const face=new THREE.Mesh(new THREE.SphereGeometry(0.15,segW,segH),dark);
+  face.scale.set(0.86,0.98,0.6);face.position.set(0,-0.012,0.132);head.add(face);
+  const hoodRim=new THREE.Mesh(new THREE.TorusGeometry(0.186,0.02,6,high?28:18),cloth);
+  hoodRim.position.set(0,0,0.1);hoodRim.rotation.x=0.3;hoodRim.scale.y=1.05;head.add(hoodRim);
+  const mask=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.062,0.04),metal);
+  mask.position.set(0,-0.012,0.212);head.add(mask);
+  for(const side of[-1,1]){
+    const eye=new THREE.Mesh(new THREE.BoxGeometry(0.052,0.016,0.02),glow);
+    eye.position.set(side*0.05,0.004,0.23);head.add(eye);
+  }
+  const crest=new THREE.Mesh(new THREE.ConeGeometry(0.112,0.26,segW,1),cloth);
+  crest.position.set(0,0.14,-0.1);crest.rotation.x=-0.85;head.add(crest);
+
+  /* ---------- 披风：以肩点为轴的三段布面 ---------- */
+  const cape=new THREE.Group();cape.position.set(0,1.26,-0.05);body.add(cape);
+  const capeH=(opts&&opts.compact)?0.76:0.94;
+  const capeR=(opts&&opts.compact)?0.4:0.46;
+  const capeMesh=new THREE.Mesh(new THREE.CylinderGeometry(0.22,capeR,capeH,segW,3,true,Math.PI-1.15,2.3),clothShell);
+  capeMesh.position.y=-capeH/2;cape.add(capeMesh);
+  const capeClasp=new THREE.Mesh(new THREE.TorusGeometry(0.15,0.012,6,high?24:16),metal);
+  capeClasp.position.set(0,-0.02,0.02);capeClasp.rotation.x=1.35;cape.add(capeClasp);
+
+  /* ---------- 双臂：肩球 · 上臂 · 肘 · 护腕 · 手掌手指 ---------- */
+  function mkArm(side){
+    const a=new THREE.Group();a.position.set(side*0.292,1.27,0.01);
+    a.rotation.z=side*0.12;
+    a.add(new THREE.Mesh(new THREE.SphereGeometry(0.07,segW,segH),cloth));
+    const upper=new THREE.Mesh(new THREE.CylinderGeometry(0.058,0.068,0.26,segW),cloth);
+    upper.position.y=-0.15;a.add(upper);
+    const sleeve=new THREE.Mesh(new THREE.CylinderGeometry(0.062,0.07,0.07,segW,1,true),metalShell);
+    sleeve.position.y=-0.26;a.add(sleeve);
+    const elbow=new THREE.Mesh(new THREE.SphereGeometry(0.056,segW,segH),dark);
+    elbow.position.y=-0.29;a.add(elbow);
+    const fore=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.062,0.22,segW),dark);
+    fore.position.y=-0.4;a.add(fore);
+    const bracer=new THREE.Mesh(new THREE.CylinderGeometry(0.064,0.08,0.16,segW,1,true),metalShell);
+    bracer.position.y=-0.4;a.add(bracer);
+    const hand=new THREE.Group();hand.position.y=-0.55;a.add(hand);
+    hand.add(new THREE.Mesh(new THREE.BoxGeometry(0.082,0.095,0.056),dark));
+    for(let i=0;i<4;i++){
+      const f=new THREE.Mesh(new THREE.BoxGeometry(0.017,0.058,0.019),dark);
+      f.position.set(-0.03+i*0.02,-0.07,0.004);hand.add(f);
+    }
+    const thumb=new THREE.Mesh(new THREE.BoxGeometry(0.019,0.045,0.02),dark);
+    thumb.position.set(side*0.042,-0.028,0.012);thumb.rotation.z=side*0.5;hand.add(thumb);
+    body.add(a);return a;
+  }
+  const armL=mkArm(-1),armR=mkArm(1);
+
+  addHeroOrnaments(body,hero,{cloth,dark,metal,glow},high);
+
+  return{root,body,legL,legR,armL,armR,cape,head};
+}
+
+// 各英雄专属饰件（光环、念珠、窥镜、箭囊、星轨环）
+function addHeroOrnaments(parent,hero,mats,high){
+  const{cloth,dark,metal,glow}=mats;
+  if(high){
+    const backSeal=new THREE.Mesh(new THREE.TorusGeometry(0.135,0.012,6,28),glow);
+    backSeal.position.set(0,1.1,-0.35);parent.add(backSeal);
+    for(let i=0;i<4;i++){
+      const a=i/4*TAU;
+      const rivet=new THREE.Mesh(new THREE.SphereGeometry(0.016,6,5),metal);
+      rivet.position.set(Math.cos(a)*0.135,1.1+Math.sin(a)*0.135,-0.358);parent.add(rivet);
+    }
+  }
+  if(hero.id==="monk"){
+    const halo=new THREE.Mesh(new THREE.TorusGeometry(0.3,0.02,6,28),glow);
+    halo.position.set(0,1.78,-0.16);parent.add(halo);
+    for(let i=0;i<9;i++){
+      const a=i/9*TAU,bead=new THREE.Mesh(new THREE.SphereGeometry(0.032,7,6),metal);
+      bead.position.set(Math.cos(a)*0.215,1.2+Math.sin(a)*0.09,Math.sin(a)*0.19);parent.add(bead);
+    }
+    const crown=new THREE.Mesh(new THREE.ConeGeometry(0.42,0.16,16,1,true),dark);
+    crown.position.y=1.78;parent.add(crown);
+  }else if(hero.id==="scout"){
+    const scope=new THREE.Mesh(new THREE.CylinderGeometry(0.036,0.044,0.12,10),metal);
+    scope.rotation.x=Math.PI/2;scope.rotation.z=0.3;
+    scope.position.set(0.14,1.6,0.16);parent.add(scope);
+    const lens=new THREE.Mesh(new THREE.CircleGeometry(0.03,10),glow);
+    lens.position.set(0.155,1.6,0.225);lens.rotation.z=0.3;parent.add(lens);
+    const quiver=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.07,0.5,8),dark);
+    quiver.position.set(-0.17,1.12,-0.3);quiver.rotation.z=-0.18;parent.add(quiver);
+    for(let i=0;i<3;i++){
+      const arrow=new THREE.Mesh(new THREE.CylinderGeometry(0.008,0.008,0.26,4),metal);
+      arrow.position.set(-0.2+i*0.03,1.36,-0.3);arrow.rotation.z=-0.18;parent.add(arrow);
+    }
+    const feather=new THREE.Mesh(new THREE.BoxGeometry(0.028,0.24,0.06),glow);
+    feather.position.set(-0.19,1.66,-0.02);feather.rotation.z=0.42;parent.add(feather);
+  }else if(hero.id==="chantress"){
+    const orbit=new THREE.Mesh(new THREE.TorusGeometry(0.4,0.011,5,28),glow);
+    orbit.position.y=1.12;orbit.rotation.set(0.85,0.2,0.25);parent.add(orbit);
+    const tiara=new THREE.Mesh(new THREE.TorusGeometry(0.2,0.016,6,22,Math.PI),glow);
+    tiara.rotation.x=-Math.PI*0.42;tiara.position.set(0,1.72,0.1);parent.add(tiara);
+  }
+}
+
+// 各英雄的武器：挂在右手（部分挂左手），返回可供动画使用的组
+function buildHeroWeapon(hero,mats,high){
+  const{dark,metal,glow}=mats;
+  const grp=new THREE.Group();
+  const seg=high?12:8;
+  if(hero.id==="monk"){
+    const staff=new THREE.Group();staff.rotation.x=0.15;
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.036,0.036,1.72,seg),metal);
+    pole.position.y=0.11;staff.add(pole);
+    const lotusTop=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.06,0.18,8),dark);
+    lotusTop.position.y=0.94;staff.add(lotusTop);
+    const headLoop=new THREE.Mesh(new THREE.TorusGeometry(0.24,0.032,8,30),glow);
+    headLoop.position.y=1.18;staff.add(headLoop);
+    for(let i=0;i<6;i++){
+      const a=i/6*TAU;
+      const ring=new THREE.Mesh(new THREE.TorusGeometry(0.055,0.014,6,16),glow);
+      ring.position.set(Math.cos(a)*0.24,1.18+Math.sin(a)*0.24,0.04);staff.add(ring);
+    }
+    grp.add(staff);
+  }else if(hero.id==="scout"){
+    // 机械投索弩：弩身、握把、双侧弩臂、弦与上膛的声矢
+    const bow=new THREE.Group();
+    const stock=new THREE.Mesh(new THREE.BoxGeometry(0.062,0.08,0.5),dark);
+    stock.position.z=0.14;bow.add(stock);
+    const grip=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.17,0.06),metal);
+    grip.position.set(0,-0.09,-0.02);bow.add(grip);
+    for(const side of[-1,1]){
+      const limb=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.022,0.032),metal);
+      limb.position.set(side*0.16,0.01,0.33);
+      limb.rotation.z=side*0.24;bow.add(limb);
+      const tip=new THREE.Mesh(new THREE.SphereGeometry(0.022,6,5),glow);
+      tip.position.set(side*0.3,0.045,0.33);bow.add(tip);
+      const pulley=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.02,10),glow);
+      pulley.rotation.x=Math.PI/2;pulley.position.set(side*0.28,0.043,0.33);bow.add(pulley);
+    }
+    const string=new THREE.Mesh(new THREE.CylinderGeometry(0.005,0.005,0.58,3),glow);
+    string.rotation.z=Math.PI/2;string.position.set(0,0.045,0.3);bow.add(string);
+    const bolt=new THREE.Mesh(new THREE.CylinderGeometry(0.009,0.009,0.36,4),glow);
+    bolt.rotation.x=Math.PI/2;bolt.position.set(0,0.045,0.28);bow.add(bolt);
+    grp.add(bow);
+  }else if(hero.id==="chantress"){
+    const tool=new THREE.Group();
+    const r1=new THREE.Mesh(new THREE.TorusGeometry(0.24,0.016,8,30),glow);tool.add(r1);
+    const r2=new THREE.Mesh(new THREE.TorusGeometry(0.2,0.016,8,30),metal);r2.rotation.x=Math.PI/3;tool.add(r2);
+    const r3=new THREE.Mesh(new THREE.TorusGeometry(0.16,0.016,8,30),dark);r3.rotation.y=Math.PI/3;tool.add(r3);
+    const core=new THREE.Mesh(new THREE.IcosahedronGeometry(0.08,1),new THREE.MeshBasicMaterial({color:0xffd24d}));
+    tool.add(core);
+    grp.add(tool);
+  }else{
+    const hilt=new THREE.Mesh(new THREE.CylinderGeometry(0.024,0.024,0.15,8),dark);grp.add(hilt);
+    const guard=new THREE.Mesh(new THREE.BoxGeometry(0.11,0.036,0.028),metal);
+    guard.position.y=0.075;grp.add(guard);
+    const blade=new THREE.Mesh(new THREE.BoxGeometry(0.052,0.44,0.02),metal);
+    blade.position.y=0.3;grp.add(blade);
+    const rune=new THREE.Mesh(new THREE.BoxGeometry(0.024,0.4,0.026),glow);
+    rune.position.y=0.3;grp.add(rune);
+    const tip=new THREE.Mesh(new THREE.ConeGeometry(0.032,0.11,4),metal);
+    tip.position.y=0.55;grp.add(tip);
+  }
+  return grp;
+}
+
 function buildAvatar(){
   if(avatar){actorGroup.remove(avatar);}
   const g=new THREE.Group();
   const hero=G?G.hero:(HEROES.find(h=>h.id===selectedHeroId)||HEROES[0]);
 
   const cloakMat=new THREE.MeshStandardMaterial({
-    color:hero.matColor,emissive:hero.emissive,emissiveIntensity:1.2,roughness:0.65,metalness:0.25
+    map:clothTex,bumpMap:clothTex,bumpScale:0.018,
+    color:hero.matColor,emissive:hero.emissive,emissiveIntensity:0.42,roughness:0.76,metalness:0.16
   });
   const darkMat=new THREE.MeshStandardMaterial({color:0x08121a,emissive:0x09222c,emissiveIntensity:0.4,roughness:0.85});
+  const leatherMat=new THREE.MeshStandardMaterial({color:0x131a22,emissive:0x0b1c24,emissiveIntensity:0.35,roughness:0.9,metalness:0.1});
+  const metalMat=new THREE.MeshStandardMaterial({color:0x718795,emissive:hero.emissive,emissiveIntensity:0.26,roughness:0.36,metalness:0.72});
   const glowCol=new THREE.Color(hero.accentColor||hero.color);
   const glowBasic=new THREE.MeshBasicMaterial({color:glowCol});
+  const mats={cloth:cloakMat,dark:darkMat,metal:metalMat,glow:glowBasic,leather:leatherMat};
 
-  const body=new THREE.Group();g.add(body);
+  const fig=buildHeroFigure(hero,mats,{high:false,compact:true});
+  g.add(fig.root);
 
-  function mkLeg(side){
-    const l=new THREE.Group();l.position.set(side*0.13,0.72,0);
-    const thigh=new THREE.Mesh(new THREE.CapsuleGeometry(0.08,0.24,4,8),cloakMat);thigh.position.y=-0.19;l.add(thigh);
-    const shin=new THREE.Mesh(new THREE.CapsuleGeometry(0.065,0.22,4,8),darkMat);shin.position.y=-0.47;l.add(shin);
-    const boot=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.08,0.2),darkMat);boot.position.set(0,-0.66,0.05);l.add(boot);
-    body.add(l);return l;
-  }
-  const legL=mkLeg(-1),legR=mkLeg(1);
-
-  const cape=new THREE.Mesh(new THREE.LatheGeometry([
-    new THREE.Vector2(0.35,0.26),new THREE.Vector2(0.48,0.16),new THREE.Vector2(0.56,0.05),new THREE.Vector2(0.58,0.02)
-  ],8),cloakMat);
-  cape.position.y=0.02;body.add(cape);
-
-  const robe=new THREE.Mesh(new THREE.LatheGeometry([
-    new THREE.Vector2(0.42,0.24),new THREE.Vector2(0.4,0.42),new THREE.Vector2(0.33,0.66),
-    new THREE.Vector2(0.3,0.92),new THREE.Vector2(0.31,1.16),new THREE.Vector2(0.26,1.34),new THREE.Vector2(0.13,1.46)
-  ],16),cloakMat);
-  body.add(robe);
-
-  const belt=new THREE.Mesh(new THREE.TorusGeometry(0.33,0.045,8,24),glowBasic);
-  belt.rotation.x=Math.PI/2;belt.position.y=0.72;body.add(belt);
-
-  const hood=new THREE.Mesh(new THREE.SphereGeometry(0.26,16,14,0,Math.PI*2,0,Math.PI*0.75),cloakMat);
-  hood.position.y=1.5;body.add(hood);
-
-  function mkArm(side){
-    const a=new THREE.Group();a.position.set(side*0.3,1.28,0.02);
-    const up=new THREE.Mesh(new THREE.CapsuleGeometry(0.065,0.22,4,8),cloakMat);up.position.y=-0.16;a.add(up);
-    const fore=new THREE.Mesh(new THREE.CapsuleGeometry(0.055,0.2,4,8),cloakMat);fore.position.y=-0.42;a.add(fore);
-    const hand=new THREE.Mesh(new THREE.SphereGeometry(0.065,8,8),darkMat);hand.position.y=-0.58;a.add(hand);
-    body.add(a);return a;
-  }
-  const armL=mkArm(-1),armR=mkArm(1);
-
-  const weaponGrp=new THREE.Group();
-  if(hero.id==="monk"){
-    const staff=new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.035,1.5,8),darkMat);
-    staff.rotation.x=Math.PI/2;staff.position.z=0.2;
-    const ringStaff=new THREE.Mesh(new THREE.TorusGeometry(0.18,0.035,8,16),glowBasic);
-    ringStaff.position.set(0,0,0.85);staff.add(ringStaff);
-    weaponGrp.add(staff);
+  // 俯视视角下武器平放更容易辨认，因此按职业调整持握角度
+  const weaponGrp=buildHeroWeapon(hero,mats,false);
+  weaponGrp.position.set(0,-0.55,0.02);
+  if(hero.id==="monk"){weaponGrp.rotation.x=Math.PI*0.5;weaponGrp.position.z=0.42;}
+  else if(hero.id==="blade"){weaponGrp.rotation.x=Math.PI*0.5;weaponGrp.position.z=0.26;}
+  fig.armR.add(weaponGrp);
+  if(hero.id==="blade"){
+    const offhand=buildHeroWeapon(hero,mats,false);
+    offhand.position.set(0,-0.55,0.02);offhand.rotation.x=Math.PI*0.72;
+    fig.armL.add(offhand);
   }else if(hero.id==="chantress"){
-    const orb=new THREE.Mesh(new THREE.SphereGeometry(0.13,12,10),glowBasic);
-    orb.position.set(0,0,0.4);
-    const ringOrb=new THREE.Mesh(new THREE.TorusGeometry(0.22,0.02,8,20),new THREE.MeshBasicMaterial({color:0xffd24d}));
-    ringOrb.position.set(0,0,0.4);orb.add(ringOrb);
-    weaponGrp.add(orb);
-  }else{
-    const b1=new THREE.Mesh(new THREE.BoxGeometry(0.036,0.024,0.48),new THREE.MeshStandardMaterial({color:0xe5f5fc,emissive:hero.emissive,emissiveIntensity:1.5}));
-    b1.position.set(0,0,0.38);
-    const btip=new THREE.Mesh(new THREE.ConeGeometry(0.03,0.14,4),new THREE.MeshBasicMaterial({color:glowCol}));
-    btip.rotation.x=Math.PI/2;btip.position.set(0,0,0.67);
-    weaponGrp.add(b1,btip);
+    const offhand=buildHeroWeapon(hero,mats,false);
+    offhand.position.set(0,-0.55,0.02);offhand.rotation.x=Math.PI*0.72;
+    fig.armL.add(offhand);
+  }else if(hero.id==="monk"){
+    fig.armL.rotation.x=-0.3;
   }
-  weaponGrp.position.set(0,-0.58,0.02);armR.add(weaponGrp);
 
   const gl=new THREE.PointLight(glowCol,1.4,5.5,1.6);gl.position.set(0,1.1,0.3);g.add(gl);
 
@@ -2078,7 +3379,8 @@ function buildAvatar(){
   mkCone.rotation.x=Math.PI/2;mkCone.position.set(0,0.09,0.74);g.add(mkCone);
 
   g.scale.setScalar(1.08);
-  g.userData={body,legL,legR,cape,armL,armR,gl,cloakMat,weaponGrp};
+  g.userData={body:fig.body,legL:fig.legL,legR:fig.legR,cape:fig.cape,
+    armL:fig.armL,armR:fig.armR,gl,cloakMat,weaponGrp};
   avatar=g;av=g.userData;
   actorGroup.add(g);
   return g;
@@ -2202,6 +3504,83 @@ function render3(dt){
     wc.needsUpdate=true;flo.needsUpdate=true;if(capc)capc.needsUpdate=true;
   }
 
+  // 场景装饰同步声波余晖
+  for(const ds of decorSets){
+    const ic=ds.mesh.instanceColor;
+    if(!ic)continue;
+    for(let i=0;i<ds.items.length;i++){
+      const it=ds.items[i];
+      const g=G.glow[it.gy]&&G.glow[it.gy][it.gx];
+      litColor((g||0)*ds.gain,ds.lit,ds.dark,tmpCol);
+      ic.setXYZ(i,tmpCol.r,tmpCol.g,tmpCol.b);
+    }
+    ic.needsUpdate=true;
+  }
+
+  // 房间符环：声波扫过时短暂浮现并缓慢旋回
+  for(const s of roomSigils){
+    const g=G.glow[s.gy]&&G.glow[s.gy][s.gx]||0;
+    const target=0.05+g*0.42;
+    s.mat.opacity+=(target-s.mat.opacity)*Math.min(1,dt*6);
+    s.mesh.rotation.z+=dt*0.16*s.spin;
+  }
+  for(const r of arenaRings){
+    const pulse=0.5+0.5*Math.sin(G.t*1.6+r.phase*2.1);
+    r.mat.opacity=0.1+pulse*0.14;
+    r.mesh.rotation.z+=dt*0.22*r.spin;
+  }
+
+  // 喷泉水体与水滴
+  if(G.fountains)for(const fn of G.fountains){
+    const u=fn._u;
+    if(!u)continue;
+    const sp=fn.seed||0;
+    const breathe=0.5+0.5*Math.sin(G.t*2.3+sp);
+    u.jetMat.opacity=0.5+breathe*0.24;
+    u.jet.scale.y=0.94+breathe*0.12;
+    u.crown.position.y=2.1+Math.sin(G.t*3.4+sp)*0.025;
+    u.crown.scale.set(1.2+breathe*0.16,0.7-breathe*0.08,1.2+breathe*0.16);
+    u.core.rotation.y+=dt*1.1;u.core.rotation.x=Math.sin(G.t*0.9+sp)*0.15;
+    u.water.position.y=0.38+Math.sin(G.t*1.9+sp)*0.004;
+    u.waterSheen.material.opacity=0.22+breathe*0.12;
+    u.light.intensity=0.7+breathe*0.3;
+    for(let i=0;i<u.streams.length;i++)
+      u.streams[i].opacity=0.16+0.1*Math.sin(G.t*2.1+sp+i*1.05);
+    for(const r of u.rings){
+      const ph=(G.t*0.32+r.userData.phase)%1;
+      r.scale.setScalar(0.22+ph*0.82);
+      r.material.opacity=(1-ph)*(1-ph)*0.34;
+    }
+    // 水滴：从顶部抛出，落到池面后从喷口重新生成
+    const pos=u.dropPos;
+    for(let i=0;i<u.drops.length;i++){
+      const d=u.drops[i];
+      d.vy-=3.4*dt;d.y+=d.vy*dt;d.r+=d.vr*dt;
+      if(d.y<0.4){
+        d.a=rand(0,TAU);d.r=rand(0,0.16);
+        d.y=2.02+rand(0,0.14);d.vy=rand(0.5,1.4);d.vr=rand(0.15,0.7);
+      }
+      pos[i*3]=Math.cos(d.a)*d.r;pos[i*3+1]=d.y;pos[i*3+2]=Math.sin(d.a)*d.r;
+    }
+    u.dgeo.attributes.position.needsUpdate=true;
+  }
+
+  // 织音者：呼吸起伏、提灯摆动、织音环反向旋转
+  if(G.npcs)for(const n of G.npcs){
+    if(!n.grp)continue;
+    const u=n.grp.userData;
+    u.body.position.y=Math.sin(G.t*1.3+(n.lines||0))*0.035;
+    u.lantern.rotation.z=Math.sin(G.t*1.7)*0.12;
+    u.ring.rotation.z+=dt*0.8;
+    u.ring2.rotation.y-=dt*1.1;
+    u.core.material.opacity=0.7+0.3*Math.sin(G.t*2.6);
+  }
+
+  if(G.secretRune&&G.secretRune.visible){
+    G.secretRune.rotation.z+=dt*0.3;
+    G.secretRune.material.opacity=0.16+0.12*Math.sin(G.t*1.5);
+  }
+
   // 声波光环与声波内部照亮范围
   const activeW=new Set();
   for(const w of G.waves){
@@ -2246,6 +3625,11 @@ function render3(dt){
       const grow=f._howl?1+f._howl*0.55:1+Math.sin(G.t*2)*0.05;
       u.body.scale.set(1,grow,1);
       grp.rotation.y+=dt*0.3;
+      if(u.ears)u.ears.forEach((e,i)=>{e.rotation.x=Math.sin(G.t*3+i*2)*0.14;});
+      if(u.motes)u.motes.forEach((m,i)=>{
+        const a=G.t*(f._howl?2.4:1.1)+i/5*TAU;
+        m.position.set(Math.cos(a)*0.74*grow,0.4+Math.sin(G.t*2.2+i*1.7)*0.3*grow,Math.sin(a)*0.74*grow);
+      });
       grp.visible=vis>0.02;
     }else{
       const u=grp.userData;
@@ -2294,18 +3678,10 @@ function render3(dt){
     if(!pl._grp)continue;
     const u=pl._grp.userData;
     u.crystal.rotation.y+=dt*1.4;
-    u.light.intensity=pl.cd>0?0.1:0.75+pl.glow*1.2;
-    u.shaft.material.emissiveIntensity=pl.cd>0?0.15:0.35+pl.glow*0.8;
-  }
-
-  // 浅水回音水池波动
-  if(G.pools){
-    for(const pool of G.pools){
-      if(pool._mesh){
-        pool._mesh.position.y=0.025+Math.sin(G.t*2.8+pool.cx*0.01)*0.005;
-        pool._mesh.material.opacity=0.42+Math.sin(G.t*2.2)*0.08;
-      }
-    }
+    u.crystal.rotation.x=Math.sin(G.t*0.8+pl.seed)*0.12;
+    if(u.runeBand)u.runeBand.material.opacity=pl.cd>0?0.18:0.62+Math.sin(G.t*2+pl.seed)*0.18;
+    u.light.intensity=pl.cd>0?0.1:0.65+pl.glow*1.1;
+    u.shaft.material.emissiveIntensity=pl.cd>0?0.1:0.2+pl.glow*0.65;
   }
 
   // 古代宝箱开启动效与金光
@@ -2359,14 +3735,15 @@ function initHeroPreview3D(){
   if(!canvas)return;
   heroPreviewScene=new THREE.Scene();
   heroPreviewCam=new THREE.PerspectiveCamera(40,canvas.clientWidth/canvas.clientHeight,0.1,50);
-  heroPreviewCam.position.set(0,1.5,3.6);
-  heroPreviewCam.lookAt(0,1.0,0);
+  heroPreviewCam.position.set(0,1.58,3.92);
+  heroPreviewCam.lookAt(0,1.1,0);
 
-  heroPreviewRenderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true});
+  heroPreviewRenderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:false});
+  // 与游戏画面统一：低分辨率缓冲 + 最近邻放大，得到硬边像素而不是平滑高清
+  heroPreviewRenderer.setPixelRatio(Math.min(1,140/Math.max(1,canvas.clientHeight)));
   heroPreviewRenderer.setSize(canvas.clientWidth,canvas.clientHeight);
-  heroPreviewRenderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
-  heroPreviewRenderer.toneMapping=THREE.ACESFilmicToneMapping;
-  heroPreviewRenderer.toneMappingExposure=1.15;
+  heroPreviewRenderer.toneMapping=THREE.NoToneMapping;
+  heroPreviewRenderer.toneMappingExposure=1;
 
   heroPreviewScene.add(new THREE.AmbientLight(0xffffff,0.9));
   const mainLight=new THREE.DirectionalLight(0xffffff,1.4);
@@ -2374,6 +3751,12 @@ function initHeroPreview3D(){
 
   const rimLight=new THREE.DirectionalLight(0x5ce9ff,1.2);
   rimLight.position.set(-4,3,-4);heroPreviewScene.add(rimLight);
+
+  addEventListener("resize",()=>{
+    if(!heroPreviewRenderer)return;
+    heroPreviewRenderer.setPixelRatio(Math.min(1,140/Math.max(1,canvas.clientHeight)));
+    heroPreviewRenderer.setSize(canvas.clientWidth,canvas.clientHeight);
+  });
 
   // 绑定鼠标拖拽 360 度检视
   canvas.onmousedown=e=>{
@@ -2413,7 +3796,8 @@ function updateHeroModelPreview(){
   const darkPlateMat=new THREE.MeshStandardMaterial({color:0x121820,roughness:0.4,metalness:0.7});
   const silverMat=new THREE.MeshStandardMaterial({color:0xdde7f0,roughness:0.25,metalness:0.85});
   const leatherMat=new THREE.MeshStandardMaterial({color:0x221812,roughness:0.8,metalness:0.1});
-  const clothMat=new THREE.MeshStandardMaterial({color:hero.matColor,emissive:hero.emissive,emissiveIntensity:0.9,roughness:0.7,metalness:0.2});
+  const clothMat=new THREE.MeshStandardMaterial({map:clothTex,bumpMap:clothTex,bumpScale:0.022,
+    color:hero.matColor,emissive:hero.emissive,emissiveIntensity:0.12,roughness:0.76,metalness:0.16});
 
   /* ---------- 底座台阶与同心刻纹魔法阵 ---------- */
   const dais=new THREE.Group();
@@ -2428,184 +3812,51 @@ function updateHeroModelPreview(){
   daisInnerRing.rotation.x=Math.PI/2;daisInnerRing.position.y=0.29;dais.add(daisInnerRing);
   root.add(dais);
 
-  /* ---------- 角色模型本体（高精度多层次雕刻） ---------- */
-  const char=new THREE.Group();
+  /* ---------- 角色模型本体 ---------- */
+  const figMats={cloth:clothMat,dark:darkPlateMat,metal:silverMat,glow:glowMat,leather:leatherMat};
+  const fig=buildHeroFigure(hero,figMats,{high:true});
+  const char=fig.root;
   char.position.y=0.28;
 
-  // 双腿与战靴
-  for(const side of[-1,1]){
-    const leg=new THREE.Group();leg.position.set(side*0.14,0.72,0);
-    const thigh=new THREE.Mesh(new THREE.CapsuleGeometry(0.075,0.28,8,12),clothMat);thigh.position.y=-0.16;leg.add(thigh);
-    const kneepad=new THREE.Mesh(new THREE.BoxGeometry(0.11,0.1,0.08),darkPlateMat);kneepad.position.set(0,-0.32,0.05);leg.add(kneepad);
-    const shin=new THREE.Mesh(new THREE.CapsuleGeometry(0.065,0.26,8,12),darkPlateMat);shin.position.y=-0.48;leg.add(shin);
-    const boot=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.1,0.22),darkPlateMat);boot.position.set(0,-0.64,0.05);leg.add(boot);
-    char.add(leg);
-  }
+  const weapon=buildHeroWeapon(hero,figMats,true);
+  weapon.position.set(0,-0.55,0.02);
+  fig.armR.add(weapon);
 
-  // 躯干皮甲与长袍下摆
-  const skirt=new THREE.Mesh(new THREE.LatheGeometry([
-    new THREE.Vector2(0.36,0.32),new THREE.Vector2(0.48,0.2),new THREE.Vector2(0.58,0.06),new THREE.Vector2(0.6,0.02)
-  ],20),clothMat);
-  skirt.position.y=0.04;char.add(skirt);
-
-  const torso=new THREE.Mesh(new THREE.LatheGeometry([
-    new THREE.Vector2(0.4,0.3),new THREE.Vector2(0.38,0.5),new THREE.Vector2(0.32,0.72),
-    new THREE.Vector2(0.3,0.96),new THREE.Vector2(0.32,1.2),new THREE.Vector2(0.28,1.38),new THREE.Vector2(0.14,1.5)
-  ],24),clothMat);
-  char.add(torso);
-
-  // 护胸甲
-  const cuirass=new THREE.Mesh(new THREE.SphereGeometry(0.28,16,14,0,Math.PI*2,0,Math.PI*0.6),darkPlateMat);
-  cuirass.position.set(0,1.15,0.08);cuirass.rotation.x=-Math.PI*0.45;char.add(cuirass);
-
-  // 发光腰带与声纳晶核
-  const belt=new THREE.Mesh(new THREE.TorusGeometry(0.32,0.05,10,36),leatherMat);
-  belt.rotation.x=Math.PI/2;belt.position.y=0.76;char.add(belt);
-  const buckle=new THREE.Mesh(new THREE.OctahedronGeometry(0.09),glowMat);
-  buckle.position.set(0,0.76,0.34);char.add(buckle);
-
-  // 双肩护肩（按职业差异化）
-  if(hero.id==="monk"){
-    // 铁僧巨型怒目金刚狮首铜肩
-    const beastShoulder=new THREE.Mesh(new THREE.DodecahedronGeometry(0.24,1),silverMat);
-    beastShoulder.scale.set(1.1,1.3,1.2);beastShoulder.position.set(0.36,1.4,0);char.add(beastShoulder);
-    for(let i=0;i<3;i++){
-      const spike=new THREE.Mesh(new THREE.ConeGeometry(0.03,0.12,6),silverMat);
-      spike.position.set(0.36+(i-1)*0.08,1.56,0);char.add(spike);
-    }
+  if(hero.id==="blade"){
+    const off=buildHeroWeapon(hero,figMats,true);
+    off.position.set(0,-0.55,0.02);off.rotation.x=Math.PI;
+    fig.armL.add(off);
+    // 反手持匕：刀锋贴着身体两侧向下，轮廓才不会被躯干吞掉
+    weapon.rotation.x=Math.PI;weapon.position.set(0,-0.55,0.07);
   }else if(hero.id==="chantress"){
-    // 虚空浮空肩甲
-    for(const side of[-1,1]){
-      const orbShoulder=new THREE.Mesh(new THREE.TorusGeometry(0.18,0.03,8,24),glowMat);
-      orbShoulder.position.set(side*0.38,1.4,0);orbShoulder.rotation.y=Math.PI/4;char.add(orbShoulder);
-    }
-  }else{
-    for(const side of[-1,1]){
-      const pad=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.18,0.12,8),darkPlateMat);
-      pad.position.set(side*0.35,1.38,0);pad.rotation.z=-side*0.3;char.add(pad);
-    }
-  }
-
-  // 披风与背带
-  const cape=new THREE.Mesh(new THREE.BoxGeometry(0.44,0.85,0.04),clothMat);
-  cape.position.set(0,0.95,-0.36);cape.rotation.x=-0.12;char.add(cape);
-
-  /* ---------- 头部与专属面具头盔 ---------- */
-  const hood=new THREE.Mesh(new THREE.SphereGeometry(0.26,22,18,0,Math.PI*2,0,Math.PI*0.75),clothMat);
-  hood.position.y=1.54;char.add(hood);
-  const hoodCrest=new THREE.Mesh(new THREE.ConeGeometry(0.15,0.4,8),clothMat);
-  hoodCrest.position.set(0,1.72,-0.12);hoodCrest.rotation.x=-0.5;char.add(hoodCrest);
-
-  if(hero.id==="monk"){
-    // 僧侣斗笠法冠与悬浮佛光金环
-    const hat=new THREE.Mesh(new THREE.ConeGeometry(0.48,0.18,24,1,true),darkPlateMat);
-    hat.position.y=1.82;char.add(hat);
-    const halo=new THREE.Mesh(new THREE.TorusGeometry(0.46,0.025,10,48),glowMat);
-    halo.position.set(0,1.6,-0.22);halo.rotation.x=0.1;char.add(halo);
-    // 念珠
-    for(let i=0;i<12;i++){
-      const a=i/12*TAU;
-      const bead=new THREE.Mesh(new THREE.SphereGeometry(0.04,8,8),darkPlateMat);
-      bead.position.set(Math.cos(a)*0.24,1.32+Math.sin(a)*0.1,Math.sin(a)*0.24);char.add(bead);
-    }
-  }else if(hero.id==="scout"){
-    // 游侠单目声纳窥镜与羽翼饰针
-    const scope=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.06,0.14,12),glowMat);
-    scope.rotation.x=Math.PI/2;scope.position.set(0.08,1.52,0.24);char.add(scope);
-    const feather=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.3,0.08),glowMat);
-    feather.position.set(-0.24,1.7,0);feather.rotation.z=0.4;char.add(feather);
-  }else if(hero.id==="chantress"){
-    // 星月紫晶面纱冠冕
-    const tiara=new THREE.Mesh(new THREE.TorusGeometry(0.28,0.02,8,24,Math.PI),glowMat);
-    tiara.rotation.x=-Math.PI*0.4;tiara.position.set(0,1.66,0.12);char.add(tiara);
-    for(let i=0;i<5;i++){
-      const crystal=new THREE.Mesh(new THREE.OctahedronGeometry(0.06),glowMat);
-      crystal.position.set((i-2)*0.09,1.74,0.12);char.add(crystal);
-    }
-  }else{
-    // 刺客声纳盲目面罩，发光波形纹
-    const visor=new THREE.Mesh(new THREE.BoxGeometry(0.28,0.07,0.08),darkPlateMat);
-    visor.position.set(0,1.52,0.22);char.add(visor);
-    const runeWave=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.02,0.09),glowMat);
-    runeWave.position.set(0,1.52,0.23);char.add(runeWave);
-  }
-
-  /* ---------- 双臂与专属神兵利器雕刻 ---------- */
-  // 左臂
-  const armL=new THREE.Group();armL.position.set(-0.34,1.34,0);
-  const upL=new THREE.Mesh(new THREE.CapsuleGeometry(0.065,0.24,6,10),clothMat);upL.position.y=-0.16;armL.add(upL);
-  const foreL=new THREE.Mesh(new THREE.CapsuleGeometry(0.058,0.22,6,10),darkPlateMat);foreL.position.y=-0.42;armL.add(foreL);
-  const handL=new THREE.Mesh(new THREE.SphereGeometry(0.07,10,8),darkPlateMat);handL.position.y=-0.58;armL.add(handL);
-  char.add(armL);
-
-  // 右臂
-  const armR=new THREE.Group();armR.position.set(0.34,1.34,0);
-  const upR=new THREE.Mesh(new THREE.CapsuleGeometry(0.065,0.24,6,10),clothMat);upR.position.y=-0.16;armR.add(upR);
-  const foreR=new THREE.Mesh(new THREE.CapsuleGeometry(0.058,0.22,6,10),darkPlateMat);foreR.position.y=-0.42;armR.add(foreR);
-  const handR=new THREE.Mesh(new THREE.SphereGeometry(0.07,10,8),darkPlateMat);handR.position.y=-0.58;armR.add(handR);
-  char.add(armR);
-
-  // 专属武器精模
-  if(hero.id==="monk"){
-    // 六环破邪金刚鸣杖 (Khakkhara)
-    const staff=new THREE.Group();staff.position.set(0,-0.5,0.1);staff.rotation.x=0.15;
-    const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.038,0.038,1.9,12),silverMat);
-    pole.position.y=0.2;staff.add(pole);
-    const lotusTop=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.06,0.18,8),darkPlateMat);
-    lotusTop.position.y=1.1;staff.add(lotusTop);
-    const headLoop=new THREE.Mesh(new THREE.TorusGeometry(0.24,0.035,10,32),glowMat);
-    headLoop.position.y=1.35;staff.add(headLoop);
-    // 悬挂 6 环金铎
-    for(let i=0;i<6;i++){
-      const a=i/6*TAU;
-      const ring=new THREE.Mesh(new THREE.TorusGeometry(0.06,0.015,6,16),glowMat);
-      ring.position.set(Math.cos(a)*0.24,1.35+Math.sin(a)*0.24,0.04);staff.add(ring);
-    }
-    armR.add(staff);
-  }else if(hero.id==="scout"){
-    // 机械复合投索弩与音石
-    const bow=new THREE.Group();bow.position.set(0,-0.55,0.25);
-    const bowArc=new THREE.Mesh(new THREE.TorusGeometry(0.38,0.035,8,32,Math.PI),silverMat);
-    bowArc.rotation.z=-Math.PI/2;bow.add(bowArc);
-    for(const side of[-1,1]){
-      const pulley=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.03,12),glowMat);
-      pulley.rotation.x=Math.PI/2;pulley.position.set(0.05,side*0.38,0);bow.add(pulley);
-    }
-    const string=new THREE.Mesh(new THREE.CylinderGeometry(0.008,0.008,0.76,4),glowMat);
-    string.position.x=-0.08;bow.add(string);
-    armR.add(bow);
-  }else if(hero.id==="chantress"){
-    // 双手托举托浮的浑天星轨声象仪 (Armillary Astrolabe)
-    armL.rotation.x=-0.5;armL.rotation.z=0.4;
-    armR.rotation.x=-0.5;armR.rotation.z=-0.4;
-    const sphereTool=new THREE.Group();sphereTool.position.set(0,1.05,0.48);
-    const ring1=new THREE.Mesh(new THREE.TorusGeometry(0.26,0.018,8,32),glowMat);sphereTool.add(ring1);
-    const ring2=new THREE.Mesh(new THREE.TorusGeometry(0.22,0.018,8,32),silverMat);
-    ring2.rotation.x=Math.PI/3;sphereTool.add(ring2);
-    const ring3=new THREE.Mesh(new THREE.TorusGeometry(0.18,0.018,8,32),darkPlateMat);
-    ring3.rotation.y=Math.PI/3;sphereTool.add(ring3);
-    const core=new THREE.Mesh(new THREE.IcosahedronGeometry(0.09,1),new THREE.MeshBasicMaterial({color:0xffd24d}));
-    sphereTool.add(core);
-    char.add(sphereTool);
-  }else{
-    // 双持共鸣高频大马士革短匕
-    function mkDagger(reverse){
-      const dag=new THREE.Group();
-      const hilt=new THREE.Mesh(new THREE.CylinderGeometry(0.026,0.026,0.16,8),darkPlateMat);dag.add(hilt);
-      const guard=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.04,0.03),silverMat);guard.position.y=0.08;dag.add(guard);
-      const blade=new THREE.Mesh(new THREE.BoxGeometry(0.045,0.45,0.02),silverMat);blade.position.y=0.32;dag.add(blade);
-      const glowRune=new THREE.Mesh(new THREE.BoxGeometry(0.018,0.4,0.025),glowMat);glowRune.position.y=0.32;dag.add(glowRune);
-      const tip=new THREE.Mesh(new THREE.ConeGeometry(0.035,0.12,4),silverMat);tip.position.y=0.58;dag.add(tip);
-      if(reverse){dag.rotation.x=Math.PI;}
-      return dag;
-    }
-    const dagR=mkDagger(false);dagR.position.set(0,-0.55,0.15);dagR.rotation.x=Math.PI*0.3;armR.add(dagR);
-    const dagL=mkDagger(true);dagL.position.set(0,-0.55,0.05);armL.add(dagL);
+    // 星轨仪悬在身侧，避免遮挡躯干
+    weapon.position.set(0.07,-0.66,0.26);
+    weapon.scale.setScalar(0.72);
+    fig.armR.rotation.x=-0.18;fig.armL.rotation.x=-0.1;
+  }else if(hero.id==="monk"){
+    fig.armL.rotation.x=-0.26;
   }
 
   root.add(char);
   heroPreviewGroup=root;
   heroPreviewScene.add(root);
+
+  // 依角色包围盒自动取景：斗笠、长杖、光环都能完整落在画布内
+  root.updateMatrixWorld(true);
+  const bb=new THREE.Box3().setFromObject(root);
+  if(!bb.isEmpty()&&heroPreviewCam){
+    const size=new THREE.Vector3(),ctr=new THREE.Vector3();
+    bb.getSize(size);bb.getCenter(ctr);
+    const vFov=THREE.MathUtils.degToRad(heroPreviewCam.fov);
+    const distV=size.y*1.14/2/Math.tan(vFov/2);
+    const hFov=2*Math.atan(Math.tan(vFov/2)*heroPreviewCam.aspect);
+    const charBox=new THREE.Box3().setFromObject(char);
+    const charSize=new THREE.Vector3();charBox.getSize(charSize);
+    const distH=Math.max(charSize.x*1.18,charSize.z*0.6)/2/Math.tan(hFov/2);
+    const dist=Math.max(distV,distH);
+    heroPreviewCam.position.set(ctr.x,ctr.y,ctr.z+dist);
+    heroPreviewCam.lookAt(ctr.x,ctr.y,ctr.z);
+  }
 
   document.getElementById("previewHeroName").textContent=hero.name;
   document.getElementById("previewHeroName").style.color=hero.color;
@@ -2652,7 +3903,7 @@ function renderHeroCards(){
 /* ===================== HUD / UI 辅助 ===================== */
 function updateHud(){
   if(!G)return;
-  document.getElementById("hp").textContent="♥♥♥♥".slice(0,G.p.hp)+"♡♡♡♡".slice(0,Math.max(0,G.p.maxHp-G.p.hp));
+  document.getElementById("hp").textContent="♥".repeat(Math.max(0,G.p.hp))+"♡".repeat(Math.max(0,G.p.maxHp-G.p.hp));
   document.getElementById("curHeroName").textContent=G.hero.name.replace(/「|」/g,"").split(" ")[0];
   document.getElementById("curHeroName").style.color=G.hero.color;
   document.getElementById("floor").textContent=G.floor+1;
@@ -2660,9 +3911,127 @@ function updateHud(){
   document.getElementById("bells").textContent=G.p.bells;
   document.getElementById("cdStomp").style.width=(1-G.p.stompCd/CFG.actions.stomp.cd)*100+"%";
   document.getElementById("cdStrike").style.width=(1-G.p.strikeCd/CFG.actions.strike.cd)*100+"%";
+  document.getElementById("cdDash").style.width=(1-G.p.dashCd/CFG.player.dash.cd)*100+"%";
+  document.getElementById("cores").textContent=(G.p.cores||0)%CFG.core.perHp;
+  const comboEl=document.getElementById("comboChip");
+  if(comboEl){
+    const on=(G.p.combo||0)>1;
+    comboEl.style.display=on?"":"none";
+    if(on)document.getElementById("combo").textContent=G.p.combo;
+  }
 }
 
 function setMsg(html){document.getElementById("msg").innerHTML=html;}
+
+/* ===================== 声纳记忆小地图 ===================== */
+const miniCv=document.getElementById("minimap");
+const miniCtx=miniCv?miniCv.getContext("2d"):null;
+let miniOn=true;
+const MINI_W=CFG.mapW,MINI_H=CFG.mapH;
+const MINI_CW=180/MINI_W,MINI_CH=120/MINI_H;
+
+function miniToggle(){
+  miniOn=!miniOn;
+  document.getElementById("miniWrap").style.display=miniOn?"block":"none";
+}
+
+function miniColor(v,isWall){
+  if(isWall){
+    return `rgba(${Math.round(28+v*70)},${Math.round(52+v*110)},${Math.round(76+v*130)},${0.35+v*0.6})`;
+  }
+  return `rgba(${Math.round(8+v*70)},${Math.round(30+v*150)},${Math.round(46+v*180)},${0.25+v*0.65})`;
+}
+
+function drawMinimap(){
+  if(!miniCtx||!miniOn||!G)return;
+  const ctx=miniCtx,g=G.grid,mem=G.mini;
+  ctx.clearRect(0,0,180,120);
+  ctx.fillStyle="rgba(3,7,13,.55)";
+  ctx.fillRect(0,0,180,120);
+
+  for(let y=0;y<MINI_H;y++)for(let x=0;x<MINI_W;x++){
+    let v=Math.max(mem[y][x],G.glow[y][x]);
+    if(v<=0.045)continue;
+    const isWall=g[y][x]===1;
+    // 石壁比地面稍亮半档，使房间轮廓可辨
+    const val=isWall?v*0.85:v*1.15;
+    ctx.fillStyle=miniColor(clamp(val,0,1),isWall);
+    ctx.fillRect(x*MINI_CW,120-(y+1)*MINI_CH,MINI_CW+0.4,MINI_CH+0.4);
+  }
+
+  // 鸣门 / 宝箱：仅在曾被声波照见后留下印记
+  const mark=(ax,ay,color,size)=>{
+    const cx=Math.floor(ax/CFG.cell),cy=Math.floor(ay/CFG.cell);
+    if(!mem[cy]||mem[cy][cx]<=0.05)return;
+    const px=cx*MINI_CW+MINI_CW/2,py=120-(cy+0.5)*MINI_CH;
+    ctx.fillStyle=color;
+    ctx.fillRect(px-size/2,py-size/2,size,size);
+    ctx.strokeStyle=color;ctx.globalAlpha=0.55;
+    ctx.strokeRect(px-size,py-size,size*2,size*2);ctx.globalAlpha=1;
+  };
+  if(G.door)mark(G.door.x,G.door.y,"#ffd24d",4);
+  if(G.chests)G.chests.forEach(c=>{if(!c.opened)mark(c.x,c.y,"#ffaa3b",3);});
+
+  // 敌人：仅显示此刻仍被声波照亮的个体
+  for(const f of G.foes){
+    if(f.seen<0.3)continue;
+    const cx=f.x/CFG.cell,cy=f.y/CFG.cell;
+    if(Math.floor(cx)<0||Math.floor(cy)<0||Math.floor(cx)>=MINI_W||Math.floor(cy)>=MINI_H)continue;
+    const px=cx*MINI_CW,py=120-cy*MINI_CH;
+    ctx.fillStyle=f.type==="howler"?"#ffaa3b":"#ff4d61";
+    const s=f.elite?3.4:2.4;
+    ctx.fillRect(px-s/2,py-s/2,s,s);
+  }
+  // 声骸精粹：掉落后短暂标出，引导玩家靠近拾取
+  if(G.cores)for(const c of G.cores){
+    const px=c.x/CFG.cell*MINI_CW,py=120-c.y/CFG.cell*MINI_CH;
+    ctx.fillStyle=c.elite?"#ffd24d":"#9ef0ff";
+    ctx.globalAlpha=0.55+0.35*Math.sin(G.t*6);
+    ctx.fillRect(px-1.4,py-1.4,2.8,2.8);
+    ctx.globalAlpha=1;
+  }
+  // 织音者：曾被照亮的区域才留下友方标记
+  if(G.npcs)for(const n of G.npcs){
+    const cx=Math.floor(n.x/CFG.cell),cy=Math.floor(n.y/CFG.cell);
+    if(!mem[cy]||mem[cy][cx]<=0.05)continue;
+    const px=n.x/CFG.cell*MINI_CW,py=120-n.y/CFG.cell*MINI_CH;
+    ctx.fillStyle="#8defff";
+    ctx.beginPath();
+    ctx.moveTo(px,py-2.6);ctx.lineTo(px+2.2,py+2);ctx.lineTo(px-2.2,py+2);
+    ctx.closePath();ctx.fill();
+  }
+  // 隐秘石室：织音者提示后在地图上留下一个问号疑点
+  if(G.secret&&!G.secret.revealed&&G.secret.hinted){
+    const px=G.secret.door.x*MINI_CW+MINI_CW/2,py=120-(G.secret.door.y+0.5)*MINI_CH;
+    ctx.strokeStyle="rgba(255,210,77,.85)";
+    ctx.setLineDash([2,2]);
+    ctx.strokeRect(px-3,py-3,6,6);
+    ctx.setLineDash([]);
+  }
+  if(G.boss&&!G.boss.dead){
+    // Boss 血量环：让弱点窗口的收益可见
+    const px=G.boss.x/CFG.cell*MINI_CW,py=120-G.boss.y/CFG.cell*MINI_CH;
+    ctx.strokeStyle="rgba(255,210,77,.35)";ctx.lineWidth=1;
+    ctx.beginPath();ctx.arc(px,py,5,0,TAU);ctx.stroke();
+    ctx.strokeStyle="#ffd24d";ctx.lineWidth=1.6;
+    ctx.beginPath();ctx.arc(px,py,5,-Math.PI/2,-Math.PI/2+TAU*Math.max(0,G.boss.hp)/CFG.boss.hp);ctx.stroke();
+  }
+
+  // 玩家：朝向三角 + 微光点
+  const px=G.p.x/CFG.cell*MINI_CW,py=120-G.p.y/CFG.cell*MINI_CH;
+  const fa=yawToLogic(player.yaw);
+  ctx.save();ctx.translate(px,py);
+  // 逻辑平面 x→屏幕横轴、y→屏幕纵轴（向上为 y 正）
+  ctx.rotate(-fa+Math.PI/2);
+  ctx.fillStyle="#7df2ff";
+  ctx.beginPath();
+  ctx.moveTo(0,-4.6);ctx.lineTo(2.9,3.2);ctx.lineTo(0,1.5);ctx.lineTo(-2.9,3.2);
+  ctx.closePath();ctx.fill();
+  ctx.restore();
+
+  ctx.fillStyle="rgba(125,242,255,.9)";
+  ctx.fillRect(px-1,py-1,2,2);
+}
 function toast(text){
   const el=document.getElementById("toast");el.textContent=text;el.style.opacity=1;
   clearTimeout(toast._t);toast._t=setTimeout(()=>el.style.opacity=0,1400);
@@ -2694,13 +4063,15 @@ addEventListener("keydown",e=>{
   const k=e.key.toLowerCase();keys[k]=1;
   if(["arrowup","arrowdown","arrowleft","arrowright"," "].includes(k))e.preventDefault();
   if(state===St.PLAY&&G&&!G.over){
-    if(k===" ")doStomp();
+    if(k===" "){doStomp();e.preventDefault();}
+    if(k==="shift")doDash();
     if(k==="j")doStrike(yawToLogic(player.yaw));
     if(k==="k"){const a=yawToLogic(player.yaw);throwStone(G.p.x+Math.cos(a)*260,G.p.y+Math.sin(a)*260);}
     if(k==="q")toggleBell();
     if(k==="e")doInteract();
     if(k==="g")toggleGod();
     if(k==="v")debugSeeAll=!debugSeeAll;
+    if(k==="m")miniToggle();
     if(k==="r"){newRun();state=St.PLAY;hideOverlays();requestLock();}
   }
   if(state===St.CHOICE){
@@ -2791,6 +4162,7 @@ function bindTouch(id,fn){
 bindTouch("t-strike",()=>doStrike(yawToLogic(player.yaw)));
 bindTouch("t-stone",()=>{const a=yawToLogic(player.yaw);throwStone(G.p.x+Math.cos(a)*260,G.p.y+Math.sin(a)*260);});
 bindTouch("t-stomp",()=>doStomp());
+bindTouch("t-dash",()=>doDash());
 bindTouch("t-bell",()=>toggleBell());
 bindTouch("t-inter",()=>doInteract());
 
@@ -2851,7 +4223,7 @@ function loop(){
 
   update(dt);
 
-  if(G&&state===St.PLAY)render3(dt);
+  if(G&&state===St.PLAY){render3(dt);drawMinimap();}
   else if(renderer&&state===St.TITLE){
     player.yaw+=dt*0.35;
     const px=wx(G.p.x),pz=wz(G.p.y);
