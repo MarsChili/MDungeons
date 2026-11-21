@@ -82,7 +82,7 @@ body.coarse #miniWrap{top:12px;bottom:auto;right:12px;transform:scale(.82);trans
   background:repeating-linear-gradient(90deg,#5ce9ff 0 5px,#2f93ad 5px 7px);}
 #msg{position:absolute;left:50%;bottom:72px;transform:translateX(-50%);max-width:80%;text-align:center;
   font-size:15px;line-height:1.7;letter-spacing:0;color:#dcebfb;text-shadow:2px 2px 0 #000;background:#071320;
-  padding:7px 18px;border:2px solid #285066;box-shadow:var(--hard);white-space:nowrap;}
+  padding:7px 18px;border:2px solid #285066;box-shadow:var(--hard);white-space:normal;}
 #toast{position:absolute;top:17%;left:50%;transform:translateX(-50%);font-size:24px;letter-spacing:3px;
   font-family:var(--font-serif);color:var(--gold);text-shadow:3px 3px 0 #2a1a00;
   opacity:0;transition:opacity .2s steps(2,end);pointer-events:none;}
@@ -824,6 +824,16 @@ let shake=0,redFlash=0;
 const keys={};
 let debugGod=false,debugSeeAll=false;
 
+/* 高频 HUD 节点缓存：避免每帧重复查询 DOM */
+const dom={};
+["hp","curHeroName","floor","stones","bells","cdStomp","cdStrike","cdDash","cores",
+ "comboChip","combo","doorHud","doorT","muteV","redV","msg","toast"]
+ .forEach(id=>dom[id]=document.getElementById(id));
+// 仅在文本/数值真正变化时写 DOM，减少每帧无谓的样式与布局失效
+const setText=(el,v)=>{v=String(v);if(el&&el.__t!==v){el.__t=v;el.textContent=v;}};
+const setBar=(el,r)=>{const v=Math.round(clamp(r,0,1)*100);if(el&&el.__w!==v){el.__w=v;el.style.width=v+"%";}};
+const setOpacity=(el,v)=>{v=Math.round(v*100)/100;if(el&&el.__o!==v){el.__o=v;el.style.opacity=v;}};
+
 const UPGRADES=[
   {id:"boots",ic:"◉",name:"踏响靴",desc:"重踏能震杀近身的盲行者，对静兽造成 1 点真实伤害。"},
   {id:"dagger",ic:"⚔",name:"共鸣匕",desc:"斩击化为锋利狭长的聚焦音刃，击刺得更远、更致命。"},
@@ -854,7 +864,7 @@ function newRun(){
 function startFloor(idx){
   G.floor=idx;G.t=0;
   G.foes=[];G.waves=[];G.stonesFly=[];G.particles=[];G.pots=[];G.bullets=[];G.cores=[];
-  G.pools=[];G.chests=[];G.pillars=[];G.npcs=[];G.fountains=[];G.secret=null;G.secretFloor=null;G.secretRune=null;
+  G.pools=[];G.chests=[];G.pillars=[];G.npcs=[];G.fountains=[];G.secret=null;G.secretFloor=null;G.secretRune=null;G.secretCrack=null;
   G.fields.clear();
   G.p.stompCd=0;G.p.strikeCd=0;G.p.bellT=0;G.p.bellCd=0;G.p.iframes=0;
   G.p.dashCd=0;G.p.dashT=0;
@@ -1155,7 +1165,7 @@ function breakPot(pot){
   Audio2.play("potBreak",pot.x,pot.y);
   for(let i=0;i<10;i++)spawnSpark(pot.x,pot.y,COL.amber,rand(30,90));
   addWave(pot.x,pot.y,72,0.45,COL.amber,"potEcho");
-  if(pot.grp){world.remove(pot.grp);pot.grp=null;}
+  if(pot.grp){world.remove(pot.grp);disposeDeep(pot.grp,keepRes);pot.grp=null;}
   if(Math.random()<0.45){
     G.p.stones=Math.min(G.p.stones+1,CFG.core.maxStone);
     toast("拾得遗留音石 +1");
@@ -1333,7 +1343,7 @@ function updateFoes(dt){
       b.t=b.life+1;
     }
   }
-  G.bullets=G.bullets.filter(b=>b.t<b.life);
+  if(G.bullets.length)G.bullets=G.bullets.filter(b=>b.t<b.life);
 
   const dead=G.foes.filter(f=>f.hp<=0);
   dead.forEach(f=>{
@@ -1354,7 +1364,7 @@ function updateFoes(dt){
     spawnCore(f.x,f.y,f.elite);
     for(let i=0;i<14;i++)spawnSpark(f.x,f.y,f.type==="husher"?COL.shade:COL.foe,rand(25,75));
     addWave(f.x,f.y,70,0.4,f.type==="husher"?COL.shade:COL.foe,"foeDie",{blocked:true});
-    if(f.grp)scene3.remove(f.grp);
+    if(f.grp){world.remove(f.grp);disposeDeep(f.grp,keepRes);}
     updateHud();
   });
   G.foes=G.foes.filter(f=>f.hp>0);
@@ -1362,8 +1372,7 @@ function updateFoes(dt){
 
 /* ===================== 声骸精粹：击杀掉落，靠近自动吸附 ===================== */
 function spawnCore(x,y,elite){
-  const mat2=new THREE.MeshBasicMaterial({color:elite?0xffd24d:0x9ef0ff,transparent:true,opacity:0.95});
-  const mesh=new THREE.Mesh(new THREE.OctahedronGeometry(elite?0.14:0.1,0),mat2);
+  const mesh=new THREE.Mesh(elite?coreGeoElite:coreGeo,elite?coreMatElite:coreMat);
   mesh.position.set(wx(x)+rand(-0.6,0.6),0.6,wz(y)+rand(-0.6,0.6));
   world.add(mesh);
   G.cores.push({x:x+rand(-8,8),y:y+rand(-8,8),t:0,m:mesh,elite:!!elite});
@@ -1404,9 +1413,14 @@ function collectCore(c){
 
 function steerFoe(f,speed,dt){
   const gx=Math.floor(f.x/CFG.cell),gy=Math.floor(f.y/CFG.cell);
-  const key=Math.round(f.tx/CFG.cell)+","+Math.round(f.ty/CFG.cell);
+  const tcx=Math.floor(f.tx/CFG.cell),tcy=Math.floor(f.ty/CFG.cell);
+  const key=tcx+","+tcy;
   let field=G.fields.get(key);
-  if(!field){field=bfsField(G.grid,Math.floor(f.tx/CFG.cell),Math.floor(f.ty/CFG.cell));G.fields.set(key,field);}
+  if(!field){
+    // 缓存有上限，避免玩家走遍全图后无限增长
+    if(G.fields.size>48)G.fields.clear();
+    field=bfsField(G.grid,tcx,tcy);G.fields.set(key,field);
+  }
   const d=field[gy]&&field[gy][gx];
   if(d===undefined||d<=0||d>120){
     const a=Math.atan2(f.ty-f.y,f.tx-f.x);
@@ -1620,7 +1634,6 @@ function update(dt){
   p.dashCd=Math.max(0,p.dashCd-dt);
   p.comboT=Math.max(0,(p.comboT||0)-dt);
   if(p.comboT<=0&&p.combo){p.combo=0;updateHud();}
-  G.fields.clear();
 
   let mvx=0,mvy=0;
   if(keys.w||keys.arrowup){mvx+=CAM_FX;mvy+=CAM_FZ;}
@@ -1656,7 +1669,7 @@ function update(dt){
       }
     }
   }
-  G.stonesFly=G.stonesFly.filter(s=>s.t<s.life||s.bounce>0);
+  if(G.stonesFly.length)G.stonesFly=G.stonesFly.filter(s=>s.t<s.life||s.bounce>0);
 
   // 玩家足下微光气场（确保主角身旁区域永不堕入虚无纯黑）
   {
@@ -1707,7 +1720,7 @@ function update(dt){
       else if(mv>0.16)G.mini[y][x]=Math.max(0.16,mv-dt*0.06);
     }
   }
-  G.waves=G.waves.filter(w=>G.t-w.born<w.life);
+  if(G.waves.length)G.waves=G.waves.filter(w=>G.t-w.born<w.life);
 
   updateFoes(dt);
   if(G.floor===3)updateBoss(dt);
@@ -1730,15 +1743,16 @@ function update(dt){
       pt.vx=vx*0.92;pt.vy=vy*0.92;
     }
   }
-  G.particles=G.particles.filter(pt=>pt.t<pt.life);
+  if(G.particles.length)G.particles=G.particles.filter(pt=>pt.t<pt.life);
   shake=Math.max(0,shake-dt*30);redFlash=Math.max(0,redFlash-dt*1.6);
 
   G._nearDoor=G.door&&G.door.state==="sealed"&&dist(p.x,p.y,G.door.x,G.door.y)<50;
   G._nearChest=G.chests&&G.chests.find(c=>!c.opened&&(!c.secret||(G.secret&&G.secret.revealed))&&dist(p.x,p.y,c.x,c.y)<46);
   G._nearNpc=G.npcs&&G.npcs.find(n=>dist(p.x,p.y,n.x,n.y)<50);
-  const dh=document.getElementById("doorHud");
-  if(G.door&&G.door.state==="ringing"){dh.style.opacity=1;document.getElementById("doorT").textContent=G.door.t.toFixed(1);}
-  else dh.style.opacity=0;
+  if(G.door&&G.door.state==="ringing"){
+    setOpacity(dom.doorHud,1);
+    setText(dom.doorT,G.door.t.toFixed(1));
+  }else setOpacity(dom.doorHud,0);
   // 声波扫到隐秘石室的门格，石壁裂纹显现并崩开
   if(G.secret&&!G.secret.revealed){
     const sx=G.secret.door.x*CFG.cell+16,sy=G.secret.door.y*CFG.cell+16;
@@ -1955,7 +1969,18 @@ function createClothTex(){
   tex.repeat.set(2,3);tex.magFilter=THREE.NearestFilter;tex.minFilter=THREE.NearestFilter;tex.generateMipmaps=false;
   return tex;
 }
-const clothTex=createClothTex();
+// 跨楼层复用的 GPU 资源白名单：换层清理时跳过这些共享对象
+const keepRes=new WeakSet();
+const clothTex=createClothTex();keepRes.add(clothTex);
+
+// 飞石与声骸精粹共用几何/材质，避免每次投掷或掉落都新建 GPU 资源
+const stoneGeo=new THREE.SphereGeometry(0.1,8,6);
+const stoneMat=new THREE.MeshBasicMaterial({color:0xbfe9ff});
+const coreGeo=new THREE.OctahedronGeometry(0.1,0);
+const coreGeoElite=new THREE.OctahedronGeometry(0.14,0);
+const coreMat=new THREE.MeshBasicMaterial({color:0x9ef0ff,transparent:true,opacity:0.95});
+const coreMatElite=new THREE.MeshBasicMaterial({color:0xffd24d,transparent:true,opacity:0.95});
+[stoneGeo,stoneMat,coreGeo,coreGeoElite,coreMat,coreMatElite].forEach(v=>keepRes.add(v));
 
 const _matCache={};
 function getFloorMats(style){
@@ -1968,7 +1993,10 @@ function getFloorMats(style){
     floorMat:new THREE.MeshLambertMaterial({map:ft}),
     capMat:new THREE.MeshLambertMaterial({color:conf.cap})
   };
-  return _matCache[style];
+  // 地面/墙体材质按层缓存复用，不参与换层释放
+  const m=_matCache[style];
+  Object.values(m).forEach(x=>{keepRes.add(x);if(x.map)keepRes.add(x.map);});
+  return m;
 }
 
 let wallInst=null,floorInst=null,capInst=null,wallId=[],floorId=[];
@@ -1993,12 +2021,33 @@ function litColor(intensity, lit, dark, out){
   return out;
 }
 
+// 递归释放对象树上的几何体、材质与贴图；keep 中的共享资源跳过
+function disposeDeep(root,keep){
+  const seen=new Set();
+  root.traverse(o=>{
+    const geo=o.geometry;
+    if(geo&&!keep.has(geo)&&!seen.has(geo)){seen.add(geo);geo.dispose();}
+    const list=Array.isArray(o.material)?o.material:(o.material?[o.material]:[]);
+    for(const m of list){
+      if(!m||seen.has(m)||keep.has(m))continue;
+      seen.add(m);
+      for(const k in m){
+        const v=m[k];
+        if(v&&v.isTexture&&!seen.has(v)&&!keep.has(v)){seen.add(v);v.dispose();}
+      }
+      m.dispose();
+    }
+  });
+}
+
 function buildWorld(d){
-  while(world.children.length)world.remove(world.children[0]);
-  waveMeshes.forEach(m=>{if(m.grp)world.remove(m.grp);});
-  waveMeshes.length=0;
-  // 火花池材质挂在 world 下，重建世界后必须重新挂回，否则粒子会隐形
-  sparkPool.forEach(s=>{s.m.visible=false;s.active=false;world.add(s.m);});
+  // 换层前真正释放上一层独占的 GPU 资源，避免反复闯关时显存持续增长
+  waveMeshes.forEach(m=>{if(m.grp){world.remove(m.grp);m.grp.visible=false;m.active=false;}});
+  disposeDeep(world,keepRes);
+  world.clear();
+  // 声波池与火花池跨层复用，重建世界后重新挂回场景
+  waveMeshes.forEach(m=>{if(m.grp)world.add(m.grp);});
+  sparkPool.forEach(s=>{s.m.visible=false;s.active=false;s.m.__stamp=-1;world.add(s.m);});
   decorSets.length=0;roomSigils.length=0;arenaRings.length=0;
 
   const flConfig=CFG.floors[G.floor]||CFG.floors[0];
@@ -2031,12 +2080,11 @@ function buildWorld(d){
   const fgeo=new THREE.PlaneGeometry(4,4);
   floorInst=new THREE.InstancedMesh(fgeo,mats.floorMat,floorCells.length);
   floorId=Array.from({length:CFG.mapH},()=>Array(CFG.mapW).fill(-1));
-  const m4=new THREE.Matrix4();let fi=0;
+  const m4=new THREE.Matrix4(),floorRot=new THREE.Matrix4().makeRotationX(-Math.PI/2);let fi=0;
   for(const[x,y]of floorCells){
-    m4.makeTranslation(wx(x*CFG.cell+16),0,wz(y*CFG.cell+16));
-    m4.multiply(new THREE.Matrix4().makeRotationX(-Math.PI/2));
+    m4.makeTranslation(wx(x*CFG.cell+16),0,wz(y*CFG.cell+16)).multiply(floorRot);
     floorInst.setMatrixAt(fi,m4);
-    floorInst.setColorAt(fi,_darkF.clone());
+    floorInst.setColorAt(fi,_darkF);
     floorId[y][x]=fi;fi++;
   }
   floorInst.instanceColor.needsUpdate=true;floorInst.frustumCulled=false;world.add(floorInst);
@@ -2105,6 +2153,7 @@ function buildWorld(d){
     color:0x8ee8ff,size:0.06,transparent:true,opacity:0.4,blending:THREE.AdditiveBlending,depthWrite:false
   }));
   dust.name="dust";dust.frustumCulled=false;world.add(dust);
+  G._dust=dust;
 
   buildDecor(d,floorCells);
   // 终焉圣殿：给竞技场一层极暗的底光，避免整屏纯黑看不见立柱与地面
@@ -2474,6 +2523,7 @@ function revealSecret(){
   s.revealed=true;
   const dr=CFG.cell,dx=s.door.x,dy=s.door.y;
   if(G.grid[dy]&&G.grid[dy][dx]===1)G.grid[dy][dx]=0;
+  G.fields.clear(); // 地形已变，旧的寻路场全部失效
   // 抹去门格的墙体实例与压顶
   if(wallId&&wallId[dy]&&wallId[dy][dx]>=0){
     const wi=wallId[dy][dx],zero=new THREE.Matrix4().makeScale(0,0,0);
@@ -3332,7 +3382,7 @@ function buildHeroWeapon(hero,mats,high){
 }
 
 function buildAvatar(){
-  if(avatar){actorGroup.remove(avatar);}
+  if(avatar){actorGroup.remove(avatar);disposeDeep(avatar,keepRes);}
   const g=new THREE.Group();
   const hero=G?G.hero:(HEROES.find(h=>h.id===selectedHeroId)||HEROES[0]);
 
@@ -3393,6 +3443,7 @@ const waveMeshes=[];
 const waveGeo=new THREE.RingGeometry(0.92,1.0,64);
 const discGeo=new THREE.CircleGeometry(1.0,48);
 const wallGeo=new THREE.CylinderGeometry(1,1,1.7,48,1,true);
+[waveGeo,discGeo,wallGeo].forEach(g=>keepRes.add(g));
 
 function spawnSpark(x,y,color,spd){
   const vx=Math.cos(rand(0,TAU))*spd;
@@ -3438,25 +3489,30 @@ function getWaveMesh(color){
   return wm;
 }
 
-let sparkPool=[];
+let sparkPool=[],sparkStamp=0;
 function ensureSpark(color){
-  let s=sparkPool.find(p=>!p.active&&p.color===color);
+  let s=sparkPool.find(p=>!p.active&&p.m.__stamp!==sparkStamp&&p.color===color);
   if(!s){
     const m=new THREE.Mesh(new THREE.SphereGeometry(0.065,8,6),new THREE.MeshBasicMaterial({color,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));
     m.visible=false;world.add(m);
+    keepRes.add(m.geometry);keepRes.add(m.material);
     s={m,active:false,color};sparkPool.push(s);
   }
+  s.active=true;
   return s;
 }
 
 /* ===================== 像素风后处理渲染循环 ===================== */
+const _shakeVec=new THREE.Vector3();
+const _activeW=new Set();
 function render3(dt){
   if(!G||!renderer)return;
   const px=wx(G.p.x),pz=wz(G.p.y);
   player.bob=player.moving?player.bob+dt*9:player.bob*0.9;
   const bobY=Math.abs(Math.sin(player.bob))*0.05;
-  const sh=shake>0?new THREE.Vector3(rand(-1,1),rand(-1,1),rand(-1,1)).multiplyScalar(shake*0.02):null;
-  camera.position.set(px-CAM_FX*CAM.back+(sh?sh.x:0),CAM.height+(sh?sh.y*0.3:0),pz-CAM_FZ*CAM.back+(sh?sh.z:0));
+  if(shake>0)_shakeVec.set(rand(-1,1),rand(-1,1),rand(-1,1)).multiplyScalar(shake*0.02);
+  else _shakeVec.set(0,0,0);
+  camera.position.set(px-CAM_FX*CAM.back+_shakeVec.x,CAM.height+_shakeVec.y*0.3,pz-CAM_FZ*CAM.back+_shakeVec.z);
   camera.lookAt(px+CAM_FX*CAM.lookAhead,CAM.lookY,pz+CAM_FZ*CAM.lookAhead);
   camera.rotation.z=0;
 
@@ -3582,7 +3638,8 @@ function render3(dt){
   }
 
   // 声波光环与声波内部照亮范围
-  const activeW=new Set();
+  const activeW=_activeW;
+  activeW.clear();
   for(const w of G.waves){
     const r=waveAt(w)*S;
     const age=G.t-w.born;
@@ -3643,24 +3700,23 @@ function render3(dt){
   for(const s of G.stonesFly){
     const k=s.t/s.life;
     const cx=wx(s.x+(s.ex-s.x)*k),cz=wz(s.y+(s.ey-s.y)*k);
-    if(!s._m){const m=new THREE.Mesh(new THREE.SphereGeometry(0.1,8,6),new THREE.MeshBasicMaterial({color:0xbfe9ff}));
-      world.add(m);s._m=m;}
+    if(!s._m){const m=new THREE.Mesh(stoneGeo,stoneMat);world.add(m);s._m=m;}
     s._m.position.set(cx,0.9+Math.sin(k*Math.PI)*0.5,cz);s._m.visible=true;
   }
   G.stonesFly.forEach(s=>{if(s._m&&s.t>=s.life&&s.bounce<=0){world.remove(s._m);s._m=null;}});
 
   // 粒子
+  sparkStamp++;
   for(const pt of G.particles){
-    if(!pt._m){const s=ensureSpark(pt.color);s.active=true;pt._m=s.m;}
-    pt._m.visible=true;
+    if(!pt._m){const s=ensureSpark(pt.color);pt._m=s.m;}
+    pt._m.visible=true;pt._m.__stamp=sparkStamp;
     pt._m.position.set(wx(pt.x),0.9+Math.sin(pt.t*6)*0.2,wz(pt.y));
     const k=1-pt.t/pt.life;
     pt._m.scale.setScalar(0.6+k*1.4);
     pt._m.material.opacity=k;
   }
   sparkPool.forEach(s=>{
-    const on=G.particles.find(p=>p._m===s.m);
-    if(!on){s.active=false;s.m.visible=false;}
+    if(s.m.__stamp!==sparkStamp){s.active=false;s.m.visible=false;}
   });
 
   // 鸣门
@@ -3711,9 +3767,9 @@ function render3(dt){
     b._grp.visible=!b.dead;
   }
 
-  document.getElementById("muteV").style.opacity=isMuted()?1:0;
-  document.getElementById("redV").style.opacity=redFlash*0.5;
-  const d=world.getObjectByName("dust");if(d){d.rotation.y+=dt*0.02;}
+  setOpacity(dom.muteV,isMuted()?1:0);
+  setOpacity(dom.redV,redFlash*0.5);
+  if(G._dust)G._dust.rotation.y+=dt*0.02;
 
   // 离屏像素渲染 -> 近邻放大着色器
   renderer.setRenderTarget(lowRT);
@@ -3733,61 +3789,68 @@ let heroPreviewYaw=0, isDraggingPreview=false, lastMouseX=0;
 function initHeroPreview3D(){
   const canvas=document.getElementById("heroCanvas");
   if(!canvas)return;
-  heroPreviewScene=new THREE.Scene();
-  heroPreviewCam=new THREE.PerspectiveCamera(40,canvas.clientWidth/canvas.clientHeight,0.1,50);
-  heroPreviewCam.position.set(0,1.58,3.92);
-  heroPreviewCam.lookAt(0,1.1,0);
+  // 只初始化一次：重复进入选人界面时复用同一个 WebGL 上下文与事件绑定
+  if(!heroPreviewRenderer){
+    heroPreviewScene=new THREE.Scene();
+    heroPreviewCam=new THREE.PerspectiveCamera(40,canvas.clientWidth/canvas.clientHeight,0.1,50);
+    heroPreviewCam.position.set(0,1.58,3.92);
+    heroPreviewCam.lookAt(0,1.1,0);
 
-  heroPreviewRenderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:false});
+    heroPreviewRenderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:false});
+    heroPreviewRenderer.toneMapping=THREE.NoToneMapping;
+    heroPreviewRenderer.toneMappingExposure=1;
+
+    heroPreviewScene.add(new THREE.AmbientLight(0xffffff,0.9));
+    const mainLight=new THREE.DirectionalLight(0xffffff,1.4);
+    mainLight.position.set(4,6,5);heroPreviewScene.add(mainLight);
+
+    const rimLight=new THREE.DirectionalLight(0x5ce9ff,1.2);
+    rimLight.position.set(-4,3,-4);heroPreviewScene.add(rimLight);
+
+    addEventListener("resize",()=>{
+      if(!heroPreviewRenderer)return;
+      heroPreviewCam.aspect=canvas.clientWidth/Math.max(1,canvas.clientHeight);
+      heroPreviewCam.updateProjectionMatrix();
+      heroPreviewRenderer.setPixelRatio(Math.min(1,140/Math.max(1,canvas.clientHeight)));
+      heroPreviewRenderer.setSize(canvas.clientWidth,canvas.clientHeight);
+    });
+
+    // 绑定鼠标拖拽 360 度检视
+    canvas.onmousedown=e=>{
+      isDraggingPreview=true;lastMouseX=e.clientX;
+    };
+    window.addEventListener("mousemove",e=>{
+      if(!isDraggingPreview)return;
+      const dx=e.clientX-lastMouseX;
+      lastMouseX=e.clientX;
+      heroPreviewYaw+=dx*0.012;
+    });
+    window.addEventListener("mouseup",()=>isDraggingPreview=false);
+
+    // 触屏滑动旋转
+    canvas.ontouchstart=e=>{
+      if(e.touches.length===1){isDraggingPreview=true;lastMouseX=e.touches[0].clientX;}
+    };
+    canvas.ontouchmove=e=>{
+      if(!isDraggingPreview||e.touches.length!==1)return;
+      const dx=e.touches[0].clientX-lastMouseX;
+      lastMouseX=e.touches[0].clientX;
+      heroPreviewYaw+=dx*0.012;
+    };
+    canvas.ontouchend=()=>isDraggingPreview=false;
+  }
   // 与游戏画面统一：低分辨率缓冲 + 最近邻放大，得到硬边像素而不是平滑高清
+  heroPreviewCam.aspect=canvas.clientWidth/Math.max(1,canvas.clientHeight);
+  heroPreviewCam.updateProjectionMatrix();
   heroPreviewRenderer.setPixelRatio(Math.min(1,140/Math.max(1,canvas.clientHeight)));
   heroPreviewRenderer.setSize(canvas.clientWidth,canvas.clientHeight);
-  heroPreviewRenderer.toneMapping=THREE.NoToneMapping;
-  heroPreviewRenderer.toneMappingExposure=1;
-
-  heroPreviewScene.add(new THREE.AmbientLight(0xffffff,0.9));
-  const mainLight=new THREE.DirectionalLight(0xffffff,1.4);
-  mainLight.position.set(4,6,5);heroPreviewScene.add(mainLight);
-
-  const rimLight=new THREE.DirectionalLight(0x5ce9ff,1.2);
-  rimLight.position.set(-4,3,-4);heroPreviewScene.add(rimLight);
-
-  addEventListener("resize",()=>{
-    if(!heroPreviewRenderer)return;
-    heroPreviewRenderer.setPixelRatio(Math.min(1,140/Math.max(1,canvas.clientHeight)));
-    heroPreviewRenderer.setSize(canvas.clientWidth,canvas.clientHeight);
-  });
-
-  // 绑定鼠标拖拽 360 度检视
-  canvas.onmousedown=e=>{
-    isDraggingPreview=true;lastMouseX=e.clientX;
-  };
-  window.addEventListener("mousemove",e=>{
-    if(!isDraggingPreview)return;
-    const dx=e.clientX-lastMouseX;
-    lastMouseX=e.clientX;
-    heroPreviewYaw+=dx*0.012;
-  });
-  window.addEventListener("mouseup",()=>isDraggingPreview=false);
-
-  // 触屏滑动旋转
-  canvas.ontouchstart=e=>{
-    if(e.touches.length===1){isDraggingPreview=true;lastMouseX=e.touches[0].clientX;}
-  };
-  canvas.ontouchmove=e=>{
-    if(!isDraggingPreview||e.touches.length!==1)return;
-    const dx=e.touches[0].clientX-lastMouseX;
-    lastMouseX=e.touches[0].clientX;
-    heroPreviewYaw+=dx*0.012;
-  };
-  canvas.ontouchend=()=>isDraggingPreview=false;
 
   updateHeroModelPreview();
 }
 
 function updateHeroModelPreview(){
   if(!heroPreviewScene)return;
-  if(heroPreviewGroup){heroPreviewScene.remove(heroPreviewGroup);}
+  if(heroPreviewGroup){heroPreviewScene.remove(heroPreviewGroup);disposeDeep(heroPreviewGroup,keepRes);}
   const hero=HEROES.find(h=>h.id===selectedHeroId)||HEROES[0];
 
   const root=new THREE.Group();
@@ -3903,25 +3966,31 @@ function renderHeroCards(){
 /* ===================== HUD / UI 辅助 ===================== */
 function updateHud(){
   if(!G)return;
-  document.getElementById("hp").textContent="♥".repeat(Math.max(0,G.p.hp))+"♡".repeat(Math.max(0,G.p.maxHp-G.p.hp));
-  document.getElementById("curHeroName").textContent=G.hero.name.replace(/「|」/g,"").split(" ")[0];
-  document.getElementById("curHeroName").style.color=G.hero.color;
-  document.getElementById("floor").textContent=G.floor+1;
-  document.getElementById("stones").textContent=G.p.stones;
-  document.getElementById("bells").textContent=G.p.bells;
-  document.getElementById("cdStomp").style.width=(1-G.p.stompCd/CFG.actions.stomp.cd)*100+"%";
-  document.getElementById("cdStrike").style.width=(1-G.p.strikeCd/CFG.actions.strike.cd)*100+"%";
-  document.getElementById("cdDash").style.width=(1-G.p.dashCd/CFG.player.dash.cd)*100+"%";
-  document.getElementById("cores").textContent=(G.p.cores||0)%CFG.core.perHp;
-  const comboEl=document.getElementById("comboChip");
-  if(comboEl){
-    const on=(G.p.combo||0)>1;
-    comboEl.style.display=on?"":"none";
-    if(on)document.getElementById("combo").textContent=G.p.combo;
+  const p=G.p;
+  setText(dom.hp,"♥".repeat(Math.max(0,p.hp))+"♡".repeat(Math.max(0,p.maxHp-p.hp)));
+  const heroName=G.hero.name.replace(/「|」/g,"").split(" ")[0];
+  setText(dom.curHeroName,heroName);
+  if(dom.curHeroName.__c!==G.hero.color){dom.curHeroName.__c=G.hero.color;dom.curHeroName.style.color=G.hero.color;}
+  setText(dom.floor,G.floor+1);
+  setText(dom.stones,p.stones);
+  setText(dom.bells,p.bells);
+  setBar(dom.cdStomp,1-p.stompCd/CFG.actions.stomp.cd);
+  setBar(dom.cdStrike,1-p.strikeCd/CFG.actions.strike.cd);
+  setBar(dom.cdDash,1-p.dashCd/CFG.player.dash.cd);
+  setText(dom.cores,(p.cores||0)%CFG.core.perHp);
+  if(dom.comboChip){
+    const on=(p.combo||0)>1;
+    const dv=on?"":"none";
+    if(dom.comboChip.__d!==dv){dom.comboChip.__d=dv;dom.comboChip.style.display=dv;}
+    if(on)setText(dom.combo,p.combo);
   }
 }
 
-function setMsg(html){document.getElementById("msg").innerHTML=html;}
+let _lastMsg=null;
+function setMsg(html){
+  if(html===_lastMsg)return;
+  _lastMsg=html;dom.msg.innerHTML=html;
+}
 
 /* ===================== 声纳记忆小地图 ===================== */
 const miniCv=document.getElementById("minimap");
@@ -3935,15 +4004,24 @@ function miniToggle(){
   document.getElementById("miniWrap").style.display=miniOn?"block":"none";
 }
 
+// 预生成 21 级颜色表：小地图每帧数百个格子，避免反复拼接 rgba 字符串
+const MINI_STEPS=20;
+const MINI_PAL_W=[],MINI_PAL_F=[];
+for(let i=0;i<=MINI_STEPS;i++){
+  const v=i/MINI_STEPS;
+  MINI_PAL_W.push(`rgba(${Math.round(28+v*70)},${Math.round(52+v*110)},${Math.round(76+v*130)},${(0.35+v*0.6).toFixed(2)})`);
+  MINI_PAL_F.push(`rgba(${Math.round(8+v*70)},${Math.round(30+v*150)},${Math.round(46+v*180)},${(0.25+v*0.65).toFixed(2)})`);
+}
 function miniColor(v,isWall){
-  if(isWall){
-    return `rgba(${Math.round(28+v*70)},${Math.round(52+v*110)},${Math.round(76+v*130)},${0.35+v*0.6})`;
-  }
-  return `rgba(${Math.round(8+v*70)},${Math.round(30+v*150)},${Math.round(46+v*180)},${0.25+v*0.65})`;
+  const i=clamp(Math.round(v*MINI_STEPS),0,MINI_STEPS);
+  return isWall?MINI_PAL_W[i]:MINI_PAL_F[i];
 }
 
+let miniFrame=0;
 function drawMinimap(){
   if(!miniCtx||!miniOn||!G)return;
+  // 声纳记忆底图以 30fps 重绘足够，省下一半的 2D 绘制开销
+  if((miniFrame=(miniFrame+1)&1))return;
   const ctx=miniCtx,g=G.grid,mem=G.mini;
   ctx.clearRect(0,0,180,120);
   ctx.fillStyle="rgba(3,7,13,.55)";
@@ -4033,7 +4111,7 @@ function drawMinimap(){
   ctx.fillRect(px-1,py-1,2,2);
 }
 function toast(text){
-  const el=document.getElementById("toast");el.textContent=text;el.style.opacity=1;
+  const el=dom.toast;el.textContent=text;el.style.opacity=1;
   clearTimeout(toast._t);toast._t=setTimeout(()=>el.style.opacity=0,1400);
 }
 
@@ -4085,9 +4163,16 @@ addEventListener("keydown",e=>{
 });
 addEventListener("keyup",e=>keys[e.key.toLowerCase()]=0);
 
+function lockPointer(){
+  try{
+    const p=cv.requestPointerLock();
+    // 新版浏览器返回 Promise，失去用户手势时会拒绝，静默处理避免控制台报错
+    if(p&&p.catch)p.catch(()=>{});
+  }catch(e){}
+}
 function requestLock(){
   const coarse=window.matchMedia("(pointer:coarse)").matches||"ontouchstart" in window;
-  if(!coarse&&cv.requestPointerLock&&!document.pointerLockElement)cv.requestPointerLock();
+  if(!coarse&&cv.requestPointerLock&&!document.pointerLockElement)lockPointer();
 }
 
 addEventListener("mousemove",e=>{
@@ -4101,7 +4186,7 @@ addEventListener("mousemove",e=>{
 cv.addEventListener("mousedown",e=>{
   Audio2.init();if(Audio2.ctx&&Audio2.ctx.state==="suspended")Audio2.ctx.resume();
   if(state!==St.PLAY||!G||G.over)return;
-  if(!document.pointerLockElement){cv.requestPointerLock();return;}
+  if(!document.pointerLockElement){lockPointer();return;}
   const a=yawToLogic(player.yaw);
   if(e.button===0)doStrike(a);
   if(e.button===2){throwStone(G.p.x+Math.cos(a)*260,G.p.y+Math.sin(a)*260);}
