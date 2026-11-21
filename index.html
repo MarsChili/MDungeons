@@ -3440,41 +3440,35 @@ function swingKnife(){swingT=0.22;}
 
 /* ===================== 声波与火花 ===================== */
 const waveMeshes=[];
-/* 像素断续弧环：把圆环切成硬边短弧，低分辨率下呈现循声守卫式的方块音波 */
-function makeDashRing(segs,fill,inner,outer,phase){
-  const pos=[],idx=[];
-  for(let i=0;i<segs;i++){
-    const a0=phase+(i/segs)*TAU,a1=a0+(TAU/segs)*fill;
-    const c0=Math.cos(a0),s0=Math.sin(a0),c1=Math.cos(a1),s1=Math.sin(a1);
-    const b=pos.length/3;
-    pos.push(c0*inner,0,s0*inner,c1*inner,0,s1*inner,c1*outer,0,s1*outer,c0*outer,0,s0*outer);
-    idx.push(b,b+1,b+2,b,b+2,b+3);
+/* 像素光环贴图：连续的厚圆环，内缘高亮、向外分阶衰减，近邻采样保持方块颗粒 */
+function createWaveRingTex(){
+  const N=128,cv=document.createElement("canvas");
+  cv.width=cv.height=N;
+  const ctx=cv.getContext("2d"),img=ctx.createImageData(N,N);
+  // 环带分段：[内半径, 外半径, 透明度]，由内向外逐级变淡
+  const bands=[[0.56,0.63,1.0],[0.63,0.72,0.78],[0.72,0.81,0.56],
+               [0.81,0.89,0.36],[0.89,0.96,0.2],[0.96,1.02,0.09]];
+  const half=N/2;
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+    const px=(x+0.5-half)/half,py=(y+0.5-half)/half;
+    const r=Math.sqrt(px*px+py*py);
+    let a=0;
+    for(let i=0;i<bands.length;i++){
+      const b=bands[i];
+      if(r>=b[0]&&r<b[1]){a=b[2];break;}
+    }
+    const o=(y*N+x)*4;
+    img.data[o]=255;img.data[o+1]=255;img.data[o+2]=255;img.data[o+3]=a*255;
   }
-  const g=new THREE.BufferGeometry();
-  g.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));
-  g.setIndex(idx);
-  return g;
+  ctx.putImageData(img,0,0);
+  const tex=new THREE.CanvasTexture(cv);
+  tex.magFilter=THREE.NearestFilter;tex.minFilter=THREE.NearestFilter;
+  tex.generateMipmaps=false;
+  return tex;
 }
-/* 像素音墙：低矮断续竖条，只保留音波前沿的一层薄薄的空气震动 */
-function makeDashWall(segs,fill,h,phase){
-  const pos=[],idx=[];
-  for(let i=0;i<segs;i++){
-    const a0=phase+(i/segs)*TAU,a1=a0+(TAU/segs)*fill;
-    const c0=Math.cos(a0),s0=Math.sin(a0),c1=Math.cos(a1),s1=Math.sin(a1);
-    const b=pos.length/3;
-    pos.push(c0,0.02,s0,c1,0.02,s1,c1,h,s1,c0,h,s0);
-    idx.push(b,b+1,b+2,b,b+2,b+3);
-  }
-  const g=new THREE.BufferGeometry();
-  g.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));
-  g.setIndex(idx);
-  return g;
-}
-const waveGeo=makeDashRing(36,0.58,0.84,1.0,0);
-const waveGeo2=makeDashRing(36,0.4,0.9,1.03,TAU/72);
-const discGeo=new THREE.CircleGeometry(1.0,32);
-const wallGeo=makeDashWall(36,0.5,0.5,TAU/72);
-[waveGeo,waveGeo2,discGeo,wallGeo].forEach(g=>keepRes.add(g));
+const waveTex=createWaveRingTex();
+const waveGeo=new THREE.PlaneGeometry(2,2);
+[waveTex,waveGeo].forEach(v=>keepRes.add(v));
 
 function spawnSpark(x,y,color,spd){
   const vx=Math.cos(rand(0,TAU))*spd;
@@ -3491,41 +3485,21 @@ function getWaveMesh(color){
   let wm=waveMeshes.find(m=>!m.active);
   if(!wm){
     const grp=new THREE.Group();
-    // 极淡的底面辉光：只把声波扫过的区域微微压亮，不再铺满整片视野
-    const disc=new THREE.Mesh(discGeo,new THREE.MeshBasicMaterial({
-      color,transparent:true,opacity:0,
-      side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false
-    }));
-    disc.rotation.x=-Math.PI/2;disc.position.y=0.03;
-
-    // 主音波：断续像素弧环
-    const ring=new THREE.Mesh(waveGeo,new THREE.MeshBasicMaterial({
-      color,transparent:true,opacity:0,
-      side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false
-    }));
+    const opt={map:waveTex,color,transparent:true,opacity:0,side:THREE.DoubleSide,
+      blending:THREE.AdditiveBlending,depthWrite:false};
+    // 主音波：厚实发光环，中心留空
+    const ring=new THREE.Mesh(waveGeo,new THREE.MeshBasicMaterial(opt));
     ring.rotation.x=-Math.PI/2;ring.position.y=0.055;
-
-    // 尾随音波：错开半格的细弧环，做出循声守卫音波的层次
-    const ring2=new THREE.Mesh(waveGeo2,new THREE.MeshBasicMaterial({
-      color,transparent:true,opacity:0,
-      side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false
-    }));
+    // 内层回声：同款光环按比例缩小，还原参考图的双环层次
+    const ring2=new THREE.Mesh(waveGeo,new THREE.MeshBasicMaterial(opt));
     ring2.rotation.x=-Math.PI/2;ring2.position.y=0.048;
 
-    // 前沿音墙：低矮断续竖条，代替原先高耸的发光圆筒
-    const shell=new THREE.Mesh(wallGeo,new THREE.MeshBasicMaterial({
-      color,transparent:true,opacity:0,
-      side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false
-    }));
-
-    grp.add(disc,ring2,ring,shell);world.add(grp);
-    wm={grp,disc,ring,ring2,shell,active:false};waveMeshes.push(wm);
+    grp.add(ring2,ring);world.add(grp);
+    wm={grp,ring,ring2,active:false};waveMeshes.push(wm);
   }
   wm.grp.visible=true;wm.active=true;
-  wm.disc.material.color.set(color);
   wm.ring.material.color.set(color);
   wm.ring2.material.color.set(color);
-  wm.shell.material.color.set(color);
   return wm;
 }
 
@@ -3689,18 +3663,13 @@ function render3(dt){
     activeW.add(wm);
     wm.grp.position.set(wx(w.x),0,wz(w.y));
     const rad=Math.max(0.001,r);
-    wm.disc.scale.setScalar(rad);
     wm.ring.scale.setScalar(rad);
-    wm.ring2.scale.setScalar(rad*0.9);
-    wm.shell.scale.set(rad,1,rad);
+    wm.ring2.scale.setScalar(rad*0.46);
     const big=(w.tag==="stomp"||w.tag==="howl"||w.tag==="doorRing"||w.tag==="pillar");
     // 像素化阶梯淡出：让音波像逐帧闪烁的方块而不是柔光
     const aq=Math.ceil(a*6)/6;
-    // 压低整体亮度：音波只勾出轮廓，主要照明仍交给地板声呐
-    wm.disc.material.opacity=(big?0.09:0.05)*aq;
-    wm.ring.material.opacity=(big?0.58:0.44)*aq;
-    wm.ring2.material.opacity=(big?0.3:0.2)*aq;
-    wm.shell.material.opacity=(big?0.07:0.035)*aq;
+    wm.ring.material.opacity=(big?0.66:0.52)*aq;
+    wm.ring2.material.opacity=(big?0.36:0.27)*aq;
     wm.active=true;
   }
   waveMeshes.forEach(wm=>{if(!activeW.has(wm)){wm.active=false;wm.grp.visible=false;}});
